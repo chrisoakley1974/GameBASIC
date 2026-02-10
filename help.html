@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BasicEngine Help</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 24px;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      max-width: 980px;
+    }
+    code, pre { font-family: "Cascadia Mono", "Consolas", monospace; }
+    pre { background: rgba(127,127,127,0.12); padding: 12px; border-radius: 8px; overflow: auto; }
+    h1, h2 { margin: 0 0 12px; }
+    h2 { margin-top: 28px; }
+    .grid { display: grid; gap: 12px; }
+  </style>
+</head>
+<body>
+  <h1>BasicEngine Help</h1>
+  <p>Quick reference for statements and built-in functions with examples.</p>
+
+  <h2>Statements</h2>
+  <pre>REM comment
+// comment
+/* block comment */
+LET X = 10 : LET Y = 5
+DIM A(10)
+FOR I = 0 TO 10 STEP 2
+  A(I) = I
+NEXT I
+IF X > 0 THEN
+  PRINT("HI")
+ELSEIF X = 0 THEN
+  PRINT("ZERO")
+ELSE
+  PRINT("NEG")
+ENDIF
+WHILE X < 10
+  LET X = X + 1
+ENDWHILE
+END</pre>
+
+  <h2>Text</h2>
+  <pre>PRINT("HELLO", 123)
+SETTEXTCOLOR("#ffcc00")
+TEXT(10, 20, "HUD")
+TEXT(10, 32, "ALERT", "#ff4d4d")
+TEXTCENTER("TITLE", "#8be9fd")</pre>
+
+  <h2>Input & Control</h2>
+  <pre>LET NAME = INPUT("Your name?")
+WAIT(0.5)
+IF KEYDOWN("Space") THEN PRINT("FIRE") ENDIF
+LET K = LASTKEY()</pre>
+
+  <h2>Math & Random</h2>
+  <pre>LET R = RND(100)
+LET I = INT(3.7)</pre>
+
+  <h2>Screen</h2>
+  <pre>CLS()
+CLEARSCREEN()
+BORDER("#aa0000")
+SCREENBG("#001018")
+FLIP()</pre>
+
+  <h2>Pixelated Shapes</h2>
+  <pre>PIXELMODE(1)
+RECT(10, 10, 40, 20)
+FELLIPSE(120, 60, 12, 12)
+PIXELMODE(0)</pre>
+
+  <h2>Shapes</h2>
+  <pre>LINE(10, 10, 120, 40, "#8be9fd")
+RECT(10, 50, 60, 30, "#ffd166")
+FRECT(80, 50, 60, 30, "#ff6b6b")
+ELLIPSE(60, 110, 30, 18, "#50fa7b")
+FELLIPSE(150, 110, 30, 18, "#bd93f9")
+ARC(220, 110, 25, 45, 315, "#ffb86c")
+FARC(260, 110, 25, 0, 180, "#8be9fd")
+POLY(10, 150, 40, 130, 70, 150, 40, 170, "#f1fa8c")
+FPOLY(100, 150, 130, 130, 160, 150, 130, 170, "#ff79c6")</pre>
+
+  <h2>Sprites</h2>
+  <pre>SPRITE("BOX", 16, 16, "#ffcc00")
+DRAWSPRITE("BOX", 10, 10)
+MOVESPRITE("BOX", 20, 20)
+LET X = SPRITEX("BOX")
+LET Y = SPRITEY("BOX")</pre>
+
+  <h2>Sprite Banks (Animation)</h2>
+  <pre>BANKLOADSPRITE(1, "data:image/png;base64,...", 16, 16)
+SPRITEBANK("HERO", 1, 0)
+SETSPRITEFRAME("HERO", 2)
+SETSPRITETRANSFORM("HERO", 1.2, 1.2, 45, 1, 0)
+SETHOTSPOT("HERO", 8, 8)</pre>
+
+  <h2>Sprite Properties</h2>
+  <pre>LET F = SPRITEFRAME("HERO")
+LET SX = SPRITESCALEX("HERO")
+LET SY = SPRITESCALEY("HERO")
+LET R = SPRITEROT("HERO")</pre>
+
+  <h2>Collision</h2>
+  <pre>IF COLLIDES("A", AX, AY, "B", BX, BY) THEN
+  PRINT("HIT")
+ENDIF</pre>
+
+  <h2>Shape Collision Helpers</h2>
+  <pre>IF RECTHIT(10, 10, 16, 16, 20, 12, 10, 10) THEN
+  PRINT("RECT HIT")
+ENDIF
+
+IF ELLIPSEHIT(160, 100, 30, 20, 150, 100) THEN
+  PRINT("INSIDE")
+ENDIF</pre>
+
+  <h2>Banks & Memory</h2>
+  <pre>BANKCREATE(5, 256)
+BANKPOKE(5, 0, 123)
+LET V = BANKPEEK(5, 0)
+BANKCOPY(5, 6)
+BANKFREE(5)</pre>
+
+  <h2>Font</h2>
+  <pre>SETFONT(0)  REM bank 0 must contain 1024 bytes</pre>
+
+  <h2>Sound</h2>
+  <pre>SOUND(0, 0, 0.2)  REM sine
+SOUND(2, 12, 0.1) REM square
+SOUND(4, 10, 0.2) REM noise</pre>
+
+  <h2>Data</h2>
+  <pre>DATA "LEVEL1", 10, 20, 30
+RESTORE "LEVEL1"
+READ A, B, C</pre>
+</body>
+</html>

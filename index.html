@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BasicEngine</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>BasicEngine</h1>
+      <p>Type BASIC-style commands with line numbers, then Run.</p>
+    </header>
+
+    <div class="layout">
+      <section class="editor">
+        <div class="toolbar">
+          <button id="runBtn">Run</button>
+          <button id="stopBtn">Stop</button>
+          <button id="clearOutputBtn">Clear Output</button>
+          <button id="spriteEditorBtn" type="button">Sprite Editor</button>
+          <button id="saveBtn">Save</button>
+          <button id="loadBtn">Load</button>
+          <input id="fileInput" type="file" accept=".basic,.bas,.txt" hidden />
+        </div>
+        <div class="code-editor">
+          <pre id="lineNumbers" aria-hidden="true"></pre>
+          <pre id="highlight" aria-hidden="true"></pre>
+          <textarea id="programInput" spellcheck="false" wrap="soft"></textarea>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-block">
+          <div class="panel-header">
+            <h2>Screen</h2>
+            <div class="screen-controls">
+              <label for="screenSize">Size</label>
+              <select id="screenSize">
+                <option value="2x" selected>640x400</option>
+                <option value="1x">320x200</option>
+              </select>
+              <button id="popoutBtn" type="button">Pop out</button>
+            </div>
+          </div>
+          <div id="screenHost">
+            <canvas id="screen" width="320" height="200"></canvas>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <p>Supported statements: REM, LET/assignment, DIM, DATA, READ, RESTORE, IF ... THEN / ENDIF, FOR / NEXT, WHILE / ENDWHILE, RETURN, END. Built-in functions: PRINT(), TEXT(x,y,text[,color]), TEXTCENTER(text[,color]), SETTEXTCOLOR(color), PIXELMODE(0/1), LINE(x1,y1,x2,y2[,color]), RECT(x,y,w,h[,color]), FRECT(x,y,w,h[,color]), ELLIPSE(x,y,rx,ry[,color]), FELLIPSE(x,y,rx,ry[,color]), ARC(x,y,r,startDeg,endDeg[,color]), FARC(x,y,r,startDeg,endDeg[,color]), POLY(x1,y1,...[,color]), FPOLY(x1,y1,...[,color]), RECTHIT(x1,y1,w1,h1,x2,y2,w2,h2), ELLIPSEHIT(cx,cy,rx,ry,px,py), INPUT(), CLS(), CLEARSCREEN(), WAIT(seconds), BORDER(color), SCREENBG(color), SPRITE(), SPRITEBANK(), SETSPRITEFRAME(), SETSPRITETRANSFORM(), SETHOTSPOT(), DRAWSPRITE(), MOVESPRITE(), SPRITEX(), SPRITEY(), SPRITEFRAME(), SPRITESCALEX(), SPRITESCALEY(), SPRITEROT(), COLLIDES(), FLIP(), RND(), INT(), STRLEN(), BANKCREATE(), BANKLOAD(id, data), BANKLOADSPRITE(id, dataUrl, frameW, frameH), BANKFREE(), BANKCOPY(), BANKPEEK(), BANKPOKE(), SETFONT(), SOUND(0/1/2/4), KEYDOWN(), LASTKEY()</p>
+    </footer>
+  </div>
+
+  <div id="spriteEditorModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Sprite Editor</h2>
+        <button id="spriteEditorClose" type="button">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="sprite-toolbar">
+          <input id="spriteFileInput" type="file" accept="image/png" hidden />
+          <button id="spriteLoadBtn" type="button">Load PNG</button>
+          <button id="spriteSaveBtn" type="button">Save PNG</button>
+          <button id="spriteUndoBtn" type="button">Undo</button>
+          <button id="spriteRedoBtn" type="button">Redo</button>
+          <label>Sheet W <input id="spriteWidth" type="number" min="1" value="64" /></label>
+          <label>Sheet H <input id="spriteHeight" type="number" min="1" value="64" /></label>
+          <button id="spriteResizeBtn" type="button">Set Size</button>
+          <label>Frame W <input id="spriteFrameW" type="number" min="1" value="16" /></label>
+          <label>Frame H <input id="spriteFrameH" type="number" min="1" value="16" /></label>
+          <button id="spriteToolBrush" type="button" class="tool-btn active">Brush</button>
+          <button id="spriteToolFill" type="button" class="tool-btn">Fill</button>
+          <label>Brush <input id="spriteBrush" type="number" min="1" max="32" value="1" /></label>
+          <label>Color <input id="spriteColor" type="color" value="#ffd166" /></label>
+          <label><input id="spriteGridToggle" type="checkbox" checked /> Grid</label>
+        </div>
+        <div class="sprite-editor-area">
+          <div class="sprite-canvas-wrap">
+            <div id="spriteCanvasStage" class="sprite-canvas-stage">
+              <canvas id="spriteEditorCanvas" width="64" height="64"></canvas>
+              <canvas id="spriteGridCanvas" width="64" height="64"></canvas>
+            </div>
+          </div>
+          <div class="sprite-output">
+            <label for="spriteDataUrl">Data URL</label>
+            <textarea id="spriteDataUrl" readonly></textarea>
+            <div class="sprite-output-actions">
+              <button id="spriteCopyBtn" type="button">Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+</body>
+</html>

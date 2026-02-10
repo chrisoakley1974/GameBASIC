@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BasicEngine Help</title>
+  <title>GameBASIC Help</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -20,123 +20,179 @@
   </style>
 </head>
 <body>
-  <h1>BasicEngine Help</h1>
-  <p>Quick reference for statements and built-in functions with examples.</p>
+  <h1>GameBASIC Help</h1>
+  <p>User reference manual for GameBASIC statements, functions, and common usage patterns.</p>
 
-  <h2>Statements</h2>
-  <pre>REM comment
-// comment
-/* block comment */
-LET X = 10 : LET Y = 5
-DIM A(10)
-FOR I = 0 TO 10 STEP 2
-  A(I) = I
-NEXT I
-IF X > 0 THEN
-  PRINT("HI")
-ELSEIF X = 0 THEN
-  PRINT("ZERO")
-ELSE
-  PRINT("NEG")
-ENDIF
-WHILE X < 10
-  LET X = X + 1
-ENDWHILE
-END</pre>
+  <h2>Overview</h2>
+  <ul>
+    <li>Programs are BASIC-style lines; line numbers are optional.</li>
+    <li>Screen coordinates are pixel-based: x=0..319, y=0..199.</li>
+    <li>If a window is active, drawing/text coordinates are relative to that window's top-left.</li>
+    <li>Colors use CSS strings (e.g., "#ffcc00" or "rgb(0,128,255)").</li>
+    <li>Most drawing/text is rendered when you call FLIP().</li>
+  </ul>
 
-  <h2>Text</h2>
+  <h2>Comments</h2>
+  <p>Use any of the following to comment code.</p>
+  <pre>REM This is a comment
+// This is also a comment
+/* Block comment */</pre>
+
+  <h2>Statements (Syntax and Parameters)</h2>
+  <ul>
+    <li><strong>REM comment</strong> — ignore the rest of the line.</li>
+    <li><strong>LET name = expression</strong> — assign a value to a variable.</li>
+    <li><strong>name = expression</strong> — shorthand assignment.</li>
+    <li><strong>DIM name(size)</strong> — create a one-dimensional array from 0..size.</li>
+    <li><strong>DATA value, value, ...</strong> — define data entries.</li>
+    <li><strong>READ var, var, ...</strong> — read sequential DATA into variables.</li>
+    <li><strong>RESTORE [id]</strong> — reset DATA pointer (optional id label).</li>
+    <li><strong>IF condition THEN ... ENDIF</strong> — conditional block.</li>
+    <li><strong>ELSEIF condition THEN</strong> — additional IF branches.</li>
+    <li><strong>ELSE</strong> — final IF branch.</li>
+    <li><strong>FOR var = start TO end STEP step</strong> — counted loop.</li>
+    <li><strong>NEXT var</strong> — ends FOR loop.</li>
+    <li><strong>WHILE condition</strong> — loop while true.</li>
+    <li><strong>ENDWHILE</strong> — ends WHILE loop.</li>
+    <li><strong>RETURN [expression]</strong> — return from a user function.</li>
+    <li><strong>END</strong> — stop program execution.</li>
+  </ul>
+
+  <h2>Text Output</h2>
+  <ul>
+    <li><strong>PRINT(value, ...)</strong> — prints a line at the top-left, values separated by spaces.</li>
+    <li><strong>TEXT(x, y, text, [color])</strong> — draw text at pixel (x, y).</li>
+    <li><strong>TEXTCENTER(text, [color])</strong> — draw text centered on screen.</li>
+    <li><strong>SETTEXTCOLOR(color)</strong> — set default text/draw color.</li>
+    <li><strong>SETPENCOLOR(color)</strong> — alias for SETTEXTCOLOR.</li>
+  </ul>
   <pre>PRINT("HELLO", 123)
 SETTEXTCOLOR("#ffcc00")
 TEXT(10, 20, "HUD")
-TEXT(10, 32, "ALERT", "#ff4d4d")
 TEXTCENTER("TITLE", "#8be9fd")</pre>
 
   <h2>Input & Control</h2>
+  <ul>
+    <li><strong>INPUT([prompt], [cursor])</strong> — shows prompt, returns typed value; cursor is a single character.</li>
+    <li><strong>WAIT(seconds)</strong> — pause for a number of seconds (can be fractional).</li>
+    <li><strong>SETFPS(fps)</strong> — set the target frame rate used by FLIP (default 60).</li>
+    <li><strong>KEYDOWN(code)</strong> — returns 1 if key is held (e.g., "Space", "ArrowLeft").</li>
+    <li><strong>LASTKEY()</strong> — last key pressed (character or key code).</li>
+  </ul>
   <pre>LET NAME = INPUT("Your name?")
+LET AGE = INPUT("Age:", "^")
 WAIT(0.5)
-IF KEYDOWN("Space") THEN PRINT("FIRE") ENDIF
-LET K = LASTKEY()</pre>
+IF KEYDOWN("Space") THEN PRINT("FIRE") ENDIF</pre>
 
-  <h2>Math & Random</h2>
-  <pre>LET R = RND(100)
-LET I = INT(3.7)</pre>
+  <h2>Screen Control</h2>
+  <ul>
+    <li><strong>CLS()</strong> — clear text output lines.</li>
+    <li><strong>CLEARSCREEN()</strong> — clear all display operations.</li>
+    <li><strong>BORDER(color)</strong> — set outer border color.</li>
+    <li><strong>SCREENBG(color)</strong> — set background for the whole screen, or the active window if one is selected.</li>
+    <li><strong>FLIP()</strong> — render all queued draw operations.</li>
+  </ul>
 
-  <h2>Screen</h2>
-  <pre>CLS()
-CLEARSCREEN()
-BORDER("#aa0000")
-SCREENBG("#001018")
-FLIP()</pre>
+  <h2>Window Areas (Clipping)</h2>
+  <p>Define rectangular drawing regions and switch between them. Any draw operation is clipped to the active window.</p>
+  <p>When a window is active, all drawing/text coordinates are relative to the window.</p>
+  <ul>
+    <li><strong>WINDOW(id, x, y, w, h, [radius])</strong> — define a window rectangle with optional rounded corners.</li>
+    <li><strong>USEWINDOW(id)</strong> — make a window active for subsequent drawing.</li>
+    <li><strong>NOWINDOW()</strong> — disable window clipping (draw to full screen).</li>
+    <li><strong>WINDOWX()</strong>, <strong>WINDOWY()</strong>, <strong>WINDOWW()</strong>, <strong>WINDOWH()</strong> — get active window bounds.</li>
+    <li><strong>WINDOWR()</strong>, <strong>WINDOWB()</strong> — right and bottom edges of the active window.</li>
+  </ul>
+  <pre>WINDOW("HUD", 0, 0, 320, 32)
+WINDOW("PLAY", 0, 32, 320, 168)
+USEWINDOW("HUD")
+TEXT(4, 4, "SCORE: 0000")
+USEWINDOW("PLAY")
+FELLIPSE(160, 120, 10, 10)
+NOWINDOW()</pre>
 
-  <h2>Pixelated Shapes</h2>
+  <h2>Pixel Mode</h2>
+  <ul>
+    <li><strong>PIXELMODE(mode)</strong> — 1 = pixel-perfect shapes, 0 = smooth shapes.</li>
+  </ul>
   <pre>PIXELMODE(1)
-RECT(10, 10, 40, 20)
 FELLIPSE(120, 60, 12, 12)
 PIXELMODE(0)</pre>
 
   <h2>Shapes</h2>
-  <pre>LINE(10, 10, 120, 40, "#8be9fd")
-RECT(10, 50, 60, 30, "#ffd166")
-FRECT(80, 50, 60, 30, "#ff6b6b")
-ELLIPSE(60, 110, 30, 18, "#50fa7b")
-FELLIPSE(150, 110, 30, 18, "#bd93f9")
-ARC(220, 110, 25, 45, 315, "#ffb86c")
-FARC(260, 110, 25, 0, 180, "#8be9fd")
-POLY(10, 150, 40, 130, 70, 150, 40, 170, "#f1fa8c")
-FPOLY(100, 150, 130, 130, 160, 150, 130, 170, "#ff79c6")</pre>
+  <p>Coordinates are pixel-based; optional color overrides current text color.</p>
+  <ul>
+    <li><strong>LINE(x1, y1, x2, y2, [color])</strong> — start and end points.</li>
+    <li><strong>RECT(x, y, w, h, [color])</strong> — top-left corner, width, height.</li>
+    <li><strong>FRECT(x, y, w, h, [color])</strong> — filled rectangle.</li>
+    <li><strong>ELLIPSE(cx, cy, rx, ry, [color])</strong> — center and radii.</li>
+    <li><strong>FELLIPSE(cx, cy, rx, ry, [color])</strong> — filled ellipse.</li>
+    <li><strong>ARC(cx, cy, r, startDeg, endDeg, [color])</strong> — center, radius, start/end in degrees.</li>
+    <li><strong>FARC(cx, cy, r, startDeg, endDeg, [color])</strong> — filled arc (pie slice).</li>
+    <li><strong>POLY(x1, y1, x2, y2, ... , [color])</strong> — outline polygon points.</li>
+    <li><strong>FPOLY(x1, y1, x2, y2, ... , [color])</strong> — filled polygon points.</li>
+  </ul>
 
-  <h2>Sprites</h2>
-  <pre>SPRITE("BOX", 16, 16, "#ffcc00")
-DRAWSPRITE("BOX", 10, 10)
-MOVESPRITE("BOX", 20, 20)
-LET X = SPRITEX("BOX")
-LET Y = SPRITEY("BOX")</pre>
+  <h2>Sprite Basics</h2>
+  <ul>
+    <li><strong>SPRITE(name, w, h, color)</strong> — create a solid-color sprite.</li>
+    <li><strong>SPRITE(name, imageUrl)</strong> — create a sprite from an image URL.</li>
+    <li><strong>DRAWSPRITE(name, x, y)</strong> — draw sprite at (x, y).</li>
+    <li><strong>MOVESPRITE(name, x, y)</strong> — set sprite position (same as draw, kept for compatibility).</li>
+    <li><strong>SPRITEX(name)</strong> / <strong>SPRITEY(name)</strong> — current sprite position.</li>
+  </ul>
 
-  <h2>Sprite Banks (Animation)</h2>
-  <pre>BANKLOADSPRITE(1, "data:image/png;base64,...", 16, 16)
-SPRITEBANK("HERO", 1, 0)
-SETSPRITEFRAME("HERO", 2)
-SETSPRITETRANSFORM("HERO", 1.2, 1.2, 45, 1, 0)
-SETHOTSPOT("HERO", 8, 8)</pre>
+  <h2>Sprite Banks & Animation</h2>
+  <ul>
+    <li><strong>BANKLOADSPRITE(id, dataUrl, frameW, frameH)</strong> — load a sprite sheet as a bank.</li>
+    <li><strong>SPRITEBANK(name, bankId, frameIndex)</strong> — create sprite using a bank.</li>
+    <li><strong>SETSPRITEFRAME(name, frameIndex)</strong> — choose frame from a bank.</li>
+    <li><strong>SETSPRITETRANSFORM(name, scaleX, scaleY, rotationDeg, flipX, flipY)</strong> — transform sprite.</li>
+    <li><strong>SETHOTSPOT(name, hotX, hotY)</strong> — set sprite origin for rotation/positioning.</li>
+  </ul>
 
   <h2>Sprite Properties</h2>
-  <pre>LET F = SPRITEFRAME("HERO")
-LET SX = SPRITESCALEX("HERO")
-LET SY = SPRITESCALEY("HERO")
-LET R = SPRITEROT("HERO")</pre>
+  <ul>
+    <li><strong>SPRITEFRAME(name)</strong> — get current frame index.</li>
+    <li><strong>SPRITESCALEX(name)</strong> / <strong>SPRITESCALEY(name)</strong> — get scale.</li>
+    <li><strong>SPRITEROT(name)</strong> — get rotation in degrees.</li>
+  </ul>
 
   <h2>Collision</h2>
-  <pre>IF COLLIDES("A", AX, AY, "B", BX, BY) THEN
-  PRINT("HIT")
-ENDIF</pre>
-
-  <h2>Shape Collision Helpers</h2>
-  <pre>IF RECTHIT(10, 10, 16, 16, 20, 12, 10, 10) THEN
-  PRINT("RECT HIT")
-ENDIF
-
-IF ELLIPSEHIT(160, 100, 30, 20, 150, 100) THEN
-  PRINT("INSIDE")
-ENDIF</pre>
+  <ul>
+    <li><strong>COLLIDES(nameA, ax, ay, nameB, bx, by)</strong> — AABB collision between two sprites.</li>
+    <li><strong>RECTHIT(x1, y1, w1, h1, x2, y2, w2, h2)</strong> — overlap of two rectangles.</li>
+    <li><strong>ELLIPSEHIT(cx, cy, rx, ry, px, py)</strong> — point-in-ellipse test.</li>
+  </ul>
 
   <h2>Banks & Memory</h2>
-  <pre>BANKCREATE(5, 256)
-BANKPOKE(5, 0, 123)
-LET V = BANKPEEK(5, 0)
-BANKCOPY(5, 6)
-BANKFREE(5)</pre>
+  <ul>
+    <li><strong>BANKCREATE(id, size)</strong> — create a byte bank of length size.</li>
+    <li><strong>BANKLOAD(id, data)</strong> — load bank data from hex/base64 string.</li>
+    <li><strong>BANKFREE(id)</strong> — delete a bank.</li>
+    <li><strong>BANKCOPY(srcId, dstId)</strong> — copy a bank.</li>
+    <li><strong>BANKPEEK(id, index)</strong> — read a byte (0..255).</li>
+    <li><strong>BANKPOKE(id, index, value)</strong> — write a byte (0..255).</li>
+  </ul>
 
   <h2>Font</h2>
-  <pre>SETFONT(0)  REM bank 0 must contain 1024 bytes</pre>
+  <ul>
+    <li><strong>SETFONT(bankId)</strong> — use a bank as a 128x8 font (1024 bytes).</li>
+  </ul>
+
+  <h2>Math & Utilities</h2>
+  <ul>
+    <li><strong>RND([max])</strong> — random float in $[0, max)$ (default max=1).</li>
+    <li><strong>INT(value)</strong> — floor to integer.</li>
+    <li><strong>STRLEN(text)</strong> — string length.</li>
+  </ul>
 
   <h2>Sound</h2>
-  <pre>SOUND(0, 0, 0.2)  REM sine
-SOUND(2, 12, 0.1) REM square
-SOUND(4, 10, 0.2) REM noise</pre>
-
-  <h2>Data</h2>
-  <pre>DATA "LEVEL1", 10, 20, 30
-RESTORE "LEVEL1"
-READ A, B, C</pre>
+  <ul>
+    <li><strong>SOUND(wave, note, seconds)</strong> — play sound. wave: 0=sine, 1=saw, 2=square, 4=noise.</li>
+  </ul>
+  <pre>SOUND(0, 0, 0.2)
+SOUND(2, 12, 0.1)
+SOUND(4, 10, 0.2)</pre>
 </body>
 </html>

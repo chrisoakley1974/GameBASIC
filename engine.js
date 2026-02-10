@@ -2,9 +2,9 @@
   const programInput = document.getElementById("programInput");
   const runBtn = document.getElementById("runBtn");
   const stopBtn = document.getElementById("stopBtn");
-  const clearOutputBtn = document.getElementById("clearOutputBtn");
   const saveBtn = document.getElementById("saveBtn");
   const loadBtn = document.getElementById("loadBtn");
+  const exportHtmlBtn = document.getElementById("exportHtmlBtn");
   const fileInput = document.getElementById("fileInput");
   const highlight = document.getElementById("highlight");
   const lineNumbers = document.getElementById("lineNumbers");
@@ -136,6 +136,9 @@ CLS()
 CLEARSCREEN()
 PIXELMODE(1)
 
+WINDOW("PLAY", 10, 10, 300, 150)
+USEWINDOW("PLAY")
+
 LET COUNT = 4
 DIM CX(COUNT - 1)
 DIM CY(COUNT - 1)
@@ -155,14 +158,17 @@ LET R(2) = 18
 LET R(3) = 12
 
 FOR I = 0 TO COUNT - 1
-  LET CX(I) = 60 + I * 60
-  LET CY(I) = 60 + I * 20
+  LET CX(I) = 30 + I * 60
+  LET CY(I) = 30 + I * 20
   LET VX(I) = 1 + RND() * 1.5
   LET VY(I) = 1 + RND() * 1.2
 NEXT I
 
 WHILE 1
   CLEARSCREEN()
+
+  LET WW = WINDOWW()
+  LET WH = WINDOWH()
 
   FOR I = 0 TO COUNT - 1
     LET CX(I) = CX(I) + VX(I)
@@ -173,8 +179,8 @@ WHILE 1
       LET VX(I) = -VX(I)
       SOUND(2, 8, 0.05)
     ENDIF
-    IF CX(I) + R(I) >= 320 THEN
-      LET CX(I) = 320 - R(I)
+    IF CX(I) + R(I) >= WW THEN
+      LET CX(I) = WW - R(I)
       LET VX(I) = -VX(I)
       SOUND(2, 8, 0.05)
     ENDIF
@@ -183,8 +189,8 @@ WHILE 1
       LET VY(I) = -VY(I)
       SOUND(2, 8, 0.05)
     ENDIF
-    IF CY(I) + R(I) >= 200 THEN
-      LET CY(I) = 200 - R(I)
+    IF CY(I) + R(I) >= WH THEN
+      LET CY(I) = WH - R(I)
       LET VY(I) = -VY(I)
       SOUND(2, 8, 0.05)
     ENDIF
@@ -215,7 +221,6 @@ WHILE 1
   NEXT I
 
   FLIP()
-  WAIT(0.016)
 ENDWHILE
 END`;
   programInput.value = sample;
@@ -249,11 +254,11 @@ END`;
       popoutWindow.focus();
       return;
     }
-    popoutWindow = window.open("", "BasicEngineScreen", "width=700,height=500,resizable=yes");
+    popoutWindow = window.open("", "GameBASICScreen", "width=700,height=500,resizable=yes");
     if (!popoutWindow) {
       return;
     }
-    popoutWindow.document.title = "BasicEngine Screen";
+    popoutWindow.document.title = "GameBASIC Screen";
     popoutWindow.document.body.style.margin = "0";
     popoutWindow.document.body.style.background = state.borderColor || "#0a1018";
     popoutWindow.document.body.style.display = "flex";
@@ -333,7 +338,11 @@ END`;
     inputCursor: 0,
     inputCursorChar: "_",
     inputResolve: null,
-    screenFocused: false
+    screenFocused: false,
+    targetFps: 60,
+    nextFrameTime: 0,
+    windows: new Map(),
+    currentWindowId: null
   };
 
   function resetState() {
@@ -362,10 +371,18 @@ END`;
     state.inputCursorChar = "_";
     state.inputResolve = null;
     state.screenFocused = false;
+    state.targetFps = 60;
+    state.nextFrameTime = 0;
+    state.windows = new Map();
+    state.currentWindowId = null;
+  }
+
+  function pushDisplayOp(op) {
+    state.displayOps.push({ ...op, windowId: state.currentWindowId });
   }
 
   function printLine(text) {
-    state.displayOps.push({ type: "text", text: String(text) });
+    pushDisplayOp({ type: "text", text: String(text) });
   }
 
   function clearOutput() {
@@ -375,6 +392,73 @@ END`;
   function clearScreen() {
     ctx.fillStyle = state.screenBg || "#0a1018";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function getWindowForOp(op) {
+    if (!op || op.windowId === null || op.windowId === undefined) {
+      return null;
+    }
+    return state.windows.get(op.windowId) || null;
+  }
+
+  function getWindowRadius(window) {
+    const r = Number(window?.r ?? 0) || 0;
+    const maxR = Math.max(0, Math.min(window.w, window.h) / 2);
+    return Math.max(0, Math.min(r, maxR));
+  }
+
+  function addWindowPath(window) {
+    const r = getWindowRadius(window);
+    const x = window.x;
+    const y = window.y;
+    const w = window.w;
+    const h = window.h;
+    const ri = Math.max(0, Math.floor(r));
+    if (state.pixelMode && ri > 0) {
+      for (let iy = 0; iy < h; iy += 1) {
+        let inset = 0;
+        if (iy < ri) {
+          const dy = ri - iy - 1;
+          inset = ri - Math.floor(Math.sqrt(Math.max(0, ri * ri - dy * dy)));
+        } else if (iy >= h - ri) {
+          const dy = iy - (h - ri);
+          inset = ri - Math.floor(Math.sqrt(Math.max(0, ri * ri - dy * dy)));
+        }
+        const rowW = w - inset * 2;
+        if (rowW > 0) {
+          ctx.rect(x + inset, y + iy, rowW, 1);
+        }
+      }
+      return;
+    }
+    if (r <= 0) {
+      ctx.rect(x, y, w, h);
+      return;
+    }
+    const r2 = Math.min(r, w / 2, h / 2);
+    ctx.moveTo(x + r2, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r2);
+    ctx.arcTo(x + w, y + h, x, y + h, r2);
+    ctx.arcTo(x, y + h, x, y, r2);
+    ctx.arcTo(x, y, x + w, y, r2);
+    ctx.closePath();
+  }
+
+  function beginWindowClip(window) {
+    if (!window) {
+      return false;
+    }
+    ctx.save();
+    ctx.beginPath();
+    addWindowPath(window);
+    ctx.clip();
+    return true;
+  }
+
+  function endWindowClip(didClip) {
+    if (didClip) {
+      ctx.restore();
+    }
   }
 
   const updateScreenFocus = () => {
@@ -432,7 +516,7 @@ END`;
       const buffer = state.inputBuffer || "";
       const lineText = prompt ? `${prompt} ${buffer}` : buffer;
       if (lineText.length > 0) {
-        state.displayOps.push({
+        pushDisplayOp({
           type: "text",
           text: lineText,
           color: state.textColor
@@ -564,98 +648,123 @@ END`;
     clearScreen();
     const lineHeight = FONT_H;
     const maxLines = Math.floor(canvas.height / lineHeight);
-    let lineIndex = 0;
+    const lineIndexMap = new Map();
+    const getLineKey = (id) => (id === null || id === undefined ? "__global__" : String(id));
 
     ctx.textBaseline = "top";
 
+    for (const window of state.windows.values()) {
+      if (window && window.bg) {
+        ctx.save();
+        ctx.beginPath();
+        addWindowPath(window);
+        ctx.fillStyle = window.bg;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
     for (const op of state.displayOps) {
+      const window = getWindowForOp(op);
+      const baseX = window ? window.x : 0;
+      const baseY = window ? window.y : 0;
+      const maxLinesForOp = window ? Math.floor(window.h / lineHeight) : maxLines;
+      const lineKey = getLineKey(op.windowId);
+      const windowClip = beginWindowClip(window);
       if (op.type === "text") {
-        if (lineIndex >= maxLines) {
+        const lineIndex = lineIndexMap.get(lineKey) ?? 0;
+        if (lineIndex >= maxLinesForOp) {
+          endWindowClip(windowClip);
           continue;
         }
-        drawBitmapText(op.text, 0, lineIndex * lineHeight, op.color || state.textColor || "#d8f3ff");
-        lineIndex += 1;
+        drawBitmapText(op.text, baseX, baseY + lineIndex * lineHeight, op.color || state.textColor || "#d8f3ff");
+        lineIndexMap.set(lineKey, lineIndex + 1);
       } else if (op.type === "textAt") {
-        drawBitmapText(op.text, op.x, op.y, op.color || state.textColor || "#d8f3ff");
+        drawBitmapText(op.text, baseX + op.x, baseY + op.y, op.color || state.textColor || "#d8f3ff");
       } else if (op.type === "textCenter") {
         const width = op.text.length * FONT_W;
-        const x = Math.max(0, Math.floor((canvas.width - width) / 2));
-        const y = Math.max(0, Math.floor((canvas.height - FONT_H) / 2));
+        const cx = window ? window.w : canvas.width;
+        const cy = window ? window.h : canvas.height;
+        const x = Math.max(0, Math.floor((cx - width) / 2)) + baseX;
+        const y = Math.max(0, Math.floor((cy - FONT_H) / 2)) + baseY;
         drawBitmapText(op.text, x, y, op.color || state.textColor || "#d8f3ff");
       } else if (op.type === "line") {
         if (state.pixelMode) {
-          drawLinePixel(op.x1, op.y1, op.x2, op.y2, op.color || state.textColor || "#d8f3ff");
+          drawLinePixel(op.x1 + baseX, op.y1 + baseY, op.x2 + baseX, op.y2 + baseY, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.strokeStyle = op.color || state.textColor || "#d8f3ff";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(op.x1 + 0.5, op.y1 + 0.5);
-          ctx.lineTo(op.x2 + 0.5, op.y2 + 0.5);
+          ctx.moveTo(op.x1 + baseX + 0.5, op.y1 + baseY + 0.5);
+          ctx.lineTo(op.x2 + baseX + 0.5, op.y2 + baseY + 0.5);
           ctx.stroke();
         }
       } else if (op.type === "rect") {
         if (state.pixelMode) {
-          strokeRectPixel(op.x, op.y, op.w, op.h, op.color || state.textColor || "#d8f3ff");
+          strokeRectPixel(op.x + baseX, op.y + baseY, op.w, op.h, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.strokeStyle = op.color || state.textColor || "#d8f3ff";
           ctx.lineWidth = 1;
-          ctx.strokeRect(op.x + 0.5, op.y + 0.5, op.w, op.h);
+          ctx.strokeRect(op.x + baseX + 0.5, op.y + baseY + 0.5, op.w, op.h);
         }
       } else if (op.type === "fillRect") {
         if (state.pixelMode) {
-          fillRectPixel(op.x, op.y, op.w, op.h, op.color || state.textColor || "#d8f3ff");
+          fillRectPixel(op.x + baseX, op.y + baseY, op.w, op.h, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.fillStyle = op.color || state.textColor || "#d8f3ff";
-          ctx.fillRect(op.x, op.y, op.w, op.h);
+          ctx.fillRect(op.x + baseX, op.y + baseY, op.w, op.h);
         }
       } else if (op.type === "ellipse") {
         if (state.pixelMode) {
-          strokeEllipsePixel(op.x, op.y, op.rx, op.ry, op.color || state.textColor || "#d8f3ff");
+          strokeEllipsePixel(op.x + baseX, op.y + baseY, op.rx, op.ry, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.strokeStyle = op.color || state.textColor || "#d8f3ff";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.ellipse(op.x, op.y, op.rx, op.ry, 0, 0, Math.PI * 2);
+          ctx.ellipse(op.x + baseX, op.y + baseY, op.rx, op.ry, 0, 0, Math.PI * 2);
           ctx.stroke();
         }
       } else if (op.type === "fillEllipse") {
         if (state.pixelMode) {
-          fillEllipsePixel(op.x, op.y, op.rx, op.ry, op.color || state.textColor || "#d8f3ff");
+          fillEllipsePixel(op.x + baseX, op.y + baseY, op.rx, op.ry, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.fillStyle = op.color || state.textColor || "#d8f3ff";
           ctx.beginPath();
-          ctx.ellipse(op.x, op.y, op.rx, op.ry, 0, 0, Math.PI * 2);
+          ctx.ellipse(op.x + baseX, op.y + baseY, op.rx, op.ry, 0, 0, Math.PI * 2);
           ctx.fill();
         }
       } else if (op.type === "arc") {
         if (state.pixelMode) {
-          strokeArcPixel(op.x, op.y, op.r, op.start, op.end, op.color || state.textColor || "#d8f3ff");
+          strokeArcPixel(op.x + baseX, op.y + baseY, op.r, op.start, op.end, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.strokeStyle = op.color || state.textColor || "#d8f3ff";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.arc(op.x, op.y, op.r, op.start, op.end);
+          ctx.arc(op.x + baseX, op.y + baseY, op.r, op.start, op.end);
           ctx.stroke();
         }
       } else if (op.type === "fillArc") {
         if (state.pixelMode) {
-          fillArcPixel(op.x, op.y, op.r, op.start, op.end, op.color || state.textColor || "#d8f3ff");
+          fillArcPixel(op.x + baseX, op.y + baseY, op.r, op.start, op.end, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.fillStyle = op.color || state.textColor || "#d8f3ff";
           ctx.beginPath();
-          ctx.moveTo(op.x, op.y);
-          ctx.arc(op.x, op.y, op.r, op.start, op.end);
+          ctx.moveTo(op.x + baseX, op.y + baseY);
+          ctx.arc(op.x + baseX, op.y + baseY, op.r, op.start, op.end);
           ctx.closePath();
           ctx.fill();
         }
       } else if (op.type === "poly") {
+        const points = window
+          ? op.points.map((pt) => ({ x: pt.x + baseX, y: pt.y + baseY }))
+          : op.points;
         if (state.pixelMode) {
-          strokePolyPixel(op.points, op.color || state.textColor || "#d8f3ff");
+          strokePolyPixel(points, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.strokeStyle = op.color || state.textColor || "#d8f3ff";
           ctx.lineWidth = 1;
           ctx.beginPath();
-          op.points.forEach((pt, index) => {
+          points.forEach((pt, index) => {
             if (index === 0) {
               ctx.moveTo(pt.x + 0.5, pt.y + 0.5);
             } else {
@@ -666,12 +775,15 @@ END`;
           ctx.stroke();
         }
       } else if (op.type === "fillPoly") {
+        const points = window
+          ? op.points.map((pt) => ({ x: pt.x + baseX, y: pt.y + baseY }))
+          : op.points;
         if (state.pixelMode) {
-          fillPolyPixel(op.points, op.color || state.textColor || "#d8f3ff");
+          fillPolyPixel(points, op.color || state.textColor || "#d8f3ff");
         } else {
           ctx.fillStyle = op.color || state.textColor || "#d8f3ff";
           ctx.beginPath();
-          op.points.forEach((pt, index) => {
+          points.forEach((pt, index) => {
             if (index === 0) {
               ctx.moveTo(pt.x, pt.y);
             } else {
@@ -684,8 +796,11 @@ END`;
       } else if (op.type === "sprite") {
         const sprite = state.sprites.get(op.name);
         if (!sprite) {
+          endWindowClip(windowClip);
           continue;
         }
+        const drawX = op.x + baseX;
+        const drawY = op.y + baseY;
         const scaleX = Number(sprite.scaleX ?? 1) || 1;
         const scaleY = Number(sprite.scaleY ?? 1) || 1;
         const flipX = sprite.flipX ? -1 : 1;
@@ -697,10 +812,11 @@ END`;
           const w = Number(sprite.w ?? 0);
           const h = Number(sprite.h ?? 0);
           if (w <= 0 || h <= 0) {
+            endWindowClip(windowClip);
             continue;
           }
           ctx.save();
-          ctx.translate(op.x - hotX + w / 2, op.y - hotY + h / 2);
+          ctx.translate(drawX - hotX + w / 2, drawY - hotY + h / 2);
           ctx.rotate((rotation * Math.PI) / 180);
           ctx.scale(scaleX * flipX, scaleY * flipY);
           ctx.fillStyle = sprite.color;
@@ -710,10 +826,11 @@ END`;
           const w = Number(sprite.w ?? sprite.img?.naturalWidth ?? sprite.img?.width ?? 0);
           const h = Number(sprite.h ?? sprite.img?.naturalHeight ?? sprite.img?.height ?? 0);
           if (!w || !h) {
+            endWindowClip(windowClip);
             continue;
           }
           ctx.save();
-          ctx.translate(op.x - hotX + w / 2, op.y - hotY + h / 2);
+          ctx.translate(drawX - hotX + w / 2, drawY - hotY + h / 2);
           ctx.rotate((rotation * Math.PI) / 180);
           ctx.scale(scaleX * flipX, scaleY * flipY);
           ctx.drawImage(sprite.img, -w / 2, -h / 2, w, h);
@@ -721,6 +838,7 @@ END`;
         } else if (sprite.type === "bank") {
           const bank = state.spriteBanks.get(sprite.bankId);
           if (!bank || !bank.img || !bank.loaded) {
+            endWindowClip(windowClip);
             continue;
           }
           const framesPerRow = Math.max(1, bank.framesPerRow);
@@ -730,13 +848,14 @@ END`;
           const w = bank.frameW;
           const h = bank.frameH;
           ctx.save();
-          ctx.translate(op.x - hotX + w / 2, op.y - hotY + h / 2);
+          ctx.translate(drawX - hotX + w / 2, drawY - hotY + h / 2);
           ctx.rotate((rotation * Math.PI) / 180);
           ctx.scale(scaleX * flipX, scaleY * flipY);
           ctx.drawImage(bank.img, sx, sy, w, h, -w / 2, -h / 2, w, h);
           ctx.restore();
         }
       }
+      endWindowClip(windowClip);
     }
 
     if (state.inputActive) {
@@ -747,9 +866,19 @@ END`;
       const after = buffer.slice(cursor);
       const caret = state.inputCursorChar || "|";
       const lineText = prompt ? `${prompt} ${before}${caret}${after}` : `${before}${caret}${after}`;
-      const inputLine = Math.min(lineIndex, Math.max(0, maxLines - 1));
-      const y = inputLine * lineHeight;
-      drawBitmapText(lineText, 0, y, state.textColor || "#d8f3ff");
+      const inputWindow = state.currentWindowId === null || state.currentWindowId === undefined
+        ? null
+        : (state.windows.get(state.currentWindowId) || null);
+      const baseX = inputWindow ? inputWindow.x : 0;
+      const baseY = inputWindow ? inputWindow.y : 0;
+      const maxLinesForInput = inputWindow ? Math.floor(inputWindow.h / lineHeight) : maxLines;
+      const inputKey = getLineKey(state.currentWindowId);
+      const inputIndex = lineIndexMap.get(inputKey) ?? 0;
+      const inputLine = Math.min(inputIndex, Math.max(0, maxLinesForInput - 1));
+      const y = baseY + inputLine * lineHeight;
+      const inputClip = beginWindowClip(inputWindow);
+      drawBitmapText(lineText, baseX, y, state.textColor || "#d8f3ff");
+      endWindowClip(inputClip);
     }
   }
 
@@ -1568,7 +1697,7 @@ END`;
 
   const builtins = {
     PRINT: (...args) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "text",
         text: args.map((val) => String(val)).join(" "),
         color: state.textColor
@@ -1576,7 +1705,7 @@ END`;
       return null;
     },
     TEXT: (x, y, text, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "textAt",
         x: Number(x),
         y: Number(y),
@@ -1586,16 +1715,90 @@ END`;
       return null;
     },
     TEXTCENTER: (text, color) => {
-      state.displayOps.push({ type: "textCenter", text: String(text), color: color ? String(color) : state.textColor });
+      pushDisplayOp({ type: "textCenter", text: String(text), color: color ? String(color) : state.textColor });
       return null;
     },
     SETTEXTCOLOR: (color) => {
       state.textColor = String(color ?? "#d8f3ff");
       return null;
     },
+    SETPENCOLOR: (color) => {
+      state.textColor = String(color ?? "#d8f3ff");
+      return null;
+    },
     PIXELMODE: (mode) => {
       state.pixelMode = Number(mode) ? 1 : 0;
       return null;
+    },
+    WINDOW: (id, x, y, w, h, r = 0) => {
+      const winId = String(id);
+      const wx = Number(x);
+      const wy = Number(y);
+      const ww = Number(w);
+      const wh = Number(h);
+      const wr = Number(r);
+      if (!Number.isFinite(wx) || !Number.isFinite(wy) || !Number.isFinite(ww) || !Number.isFinite(wh)) {
+        throw new Error("WINDOW requires numeric x, y, w, h");
+      }
+      if (ww <= 0 || wh <= 0) {
+        throw new Error("WINDOW requires width/height > 0");
+      }
+      state.windows.set(winId, { x: wx, y: wy, w: ww, h: wh, r: Number.isFinite(wr) ? wr : 0 });
+      return null;
+    },
+    USEWINDOW: (id) => {
+      const winId = String(id);
+      if (!state.windows.has(winId)) {
+        throw new Error(`USEWINDOW unknown id: ${winId}`);
+      }
+      state.currentWindowId = winId;
+      return null;
+    },
+    NOWINDOW: () => {
+      state.currentWindowId = null;
+      return null;
+    },
+    WINDOWX: () => {
+      if (state.currentWindowId === null || state.currentWindowId === undefined) {
+        return 0;
+      }
+      const win = state.windows.get(state.currentWindowId);
+      return win ? Number(win.x) || 0 : 0;
+    },
+    WINDOWY: () => {
+      if (state.currentWindowId === null || state.currentWindowId === undefined) {
+        return 0;
+      }
+      const win = state.windows.get(state.currentWindowId);
+      return win ? Number(win.y) || 0 : 0;
+    },
+    WINDOWW: () => {
+      if (state.currentWindowId === null || state.currentWindowId === undefined) {
+        return 0;
+      }
+      const win = state.windows.get(state.currentWindowId);
+      return win ? Number(win.w) || 0 : 0;
+    },
+    WINDOWH: () => {
+      if (state.currentWindowId === null || state.currentWindowId === undefined) {
+        return 0;
+      }
+      const win = state.windows.get(state.currentWindowId);
+      return win ? Number(win.h) || 0 : 0;
+    },
+    WINDOWR: () => {
+      if (state.currentWindowId === null || state.currentWindowId === undefined) {
+        return 0;
+      }
+      const win = state.windows.get(state.currentWindowId);
+      return win ? (Number(win.x) || 0) + (Number(win.w) || 0) : 0;
+    },
+    WINDOWB: () => {
+      if (state.currentWindowId === null || state.currentWindowId === undefined) {
+        return 0;
+      }
+      const win = state.windows.get(state.currentWindowId);
+      return win ? (Number(win.y) || 0) + (Number(win.h) || 0) : 0;
     },
     COLLIDES: (nameA, ax, ay, nameB, bx, by) => {
       const spriteA = state.sprites.get(String(nameA));
@@ -1804,7 +2007,7 @@ END`;
       return String(text).length;
     },
     LINE: (x1, y1, x2, y2, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "line",
         x1: Number(x1),
         y1: Number(y1),
@@ -1815,7 +2018,7 @@ END`;
       return null;
     },
     RECT: (x, y, w, h, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "rect",
         x: Number(x),
         y: Number(y),
@@ -1826,7 +2029,7 @@ END`;
       return null;
     },
     FRECT: (x, y, w, h, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "fillRect",
         x: Number(x),
         y: Number(y),
@@ -1837,7 +2040,7 @@ END`;
       return null;
     },
     ELLIPSE: (x, y, rx, ry, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "ellipse",
         x: Number(x),
         y: Number(y),
@@ -1848,7 +2051,7 @@ END`;
       return null;
     },
     FELLIPSE: (x, y, rx, ry, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "fillEllipse",
         x: Number(x),
         y: Number(y),
@@ -1859,7 +2062,7 @@ END`;
       return null;
     },
     ARC: (x, y, r, startDeg, endDeg, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "arc",
         x: Number(x),
         y: Number(y),
@@ -1871,7 +2074,7 @@ END`;
       return null;
     },
     FARC: (x, y, r, startDeg, endDeg, color) => {
-      state.displayOps.push({
+      pushDisplayOp({
         type: "fillArc",
         x: Number(x),
         y: Number(y),
@@ -1893,7 +2096,7 @@ END`;
       for (let i = 0; i < values.length; i += 2) {
         points.push({ x: Number(values[i]), y: Number(values[i + 1]) });
       }
-      state.displayOps.push({
+      pushDisplayOp({
         type: "poly",
         points,
         color: color ?? state.textColor
@@ -1911,7 +2114,7 @@ END`;
       for (let i = 0; i < values.length; i += 2) {
         points.push({ x: Number(values[i]), y: Number(values[i + 1]) });
       }
-      state.displayOps.push({
+      pushDisplayOp({
         type: "fillPoly",
         points,
         color: color ?? state.textColor
@@ -2006,19 +2209,50 @@ END`;
       return null;
     },
     SCREENBG: (color) => {
-      state.screenBg = String(color ?? "#0a1018");
+      const value = String(color ?? "#0a1018");
+      if (state.currentWindowId !== null && state.currentWindowId !== undefined) {
+        const win = state.windows.get(state.currentWindowId);
+        if (win) {
+          win.bg = value;
+          return null;
+        }
+      }
+      state.screenBg = value;
       return null;
     },
     FLIP: () => {
       return new Promise((resolve) => {
-        const raf = (popoutWindow && !popoutWindow.closed)
-          ? popoutWindow.requestAnimationFrame.bind(popoutWindow)
-          : requestAnimationFrame;
-        raf(() => {
-          renderDisplay();
-          resolve(null);
-        });
+        const frameHost = (popoutWindow && !popoutWindow.closed) ? popoutWindow : window;
+        const raf = frameHost.requestAnimationFrame.bind(frameHost);
+        const now = (frameHost.performance || performance).now();
+        const fps = Math.max(1, Number(state.targetFps) || 60);
+        const frameMs = 1000 / fps;
+        if (state.nextFrameTime <= now) {
+          state.nextFrameTime = now + frameMs;
+        }
+        const delay = Math.max(0, state.nextFrameTime - now);
+        const schedule = () => {
+          raf(() => {
+            renderDisplay();
+            resolve(null);
+          });
+        };
+        if (delay > 1) {
+          frameHost.setTimeout(schedule, delay);
+        } else {
+          schedule();
+        }
+        state.nextFrameTime += frameMs;
       });
+    },
+    SETFPS: (fps) => {
+      const value = Number(fps);
+      if (!Number.isFinite(value) || value <= 0) {
+        throw new Error("SETFPS requires a positive number");
+      }
+      state.targetFps = value;
+      state.nextFrameTime = 0;
+      return null;
     },
     INPUT: (promptText = "INPUT:", cursorChar = "_") => {
       return startInputPrompt(promptText, cursorChar);
@@ -2133,7 +2367,7 @@ END`;
       const py = Number(y);
       sprite.x = px;
       sprite.y = py;
-      state.displayOps.push({ type: "sprite", name: String(name), x: px, y: py });
+      pushDisplayOp({ type: "sprite", name: String(name), x: px, y: py });
       return null;
     },
     MOVESPRITE: (name, x, y) => {
@@ -2357,7 +2591,7 @@ END`;
           suggestedName: "program.basic",
           types: [
             {
-              description: "BasicEngine Program",
+              description: "GameBASIC Program",
               accept: { "text/plain": [".basic", ".bas", ".txt"] }
             }
           ]
@@ -2675,9 +2909,200 @@ END`;
     openPopout();
   });
   stopBtn.addEventListener("click", stopProgram);
-  clearOutputBtn.addEventListener("click", clearOutput);
   saveBtn.addEventListener("click", saveProgram);
   loadBtn.addEventListener("click", loadProgram);
+  if (exportHtmlBtn) {
+    exportHtmlBtn.addEventListener("click", async () => {
+      const code = programInput.value.replace(/\r\n/g, "\n");
+      const encodeBase64 = (text) => {
+        if (window.TextEncoder) {
+          const bytes = new TextEncoder().encode(text);
+          let binary = "";
+          bytes.forEach((b) => {
+            binary += String.fromCharCode(b);
+          });
+          return btoa(binary);
+        }
+        return btoa(unescape(encodeURIComponent(text)));
+      };
+      const b64 = encodeBase64(code);
+      let engineSource = "";
+      try {
+        const resp = await fetch("engine.js", { cache: "no-store" });
+        if (resp.ok) {
+          engineSource = await resp.text();
+        }
+      } catch (err) {
+        engineSource = "";
+      }
+      const compactEngineSource = engineSource
+        .replace(/const sample = `[\s\S]*?`\s*;\s*programInput\.value = sample;?/m, "");
+      const enginePayload = compactEngineSource ? encodeBase64(compactEngineSource) : "";
+      const engineTag = enginePayload
+        ? `<script>(function(){var b64="${enginePayload}";var binary=atob(b64);var code;if(window.TextDecoder){var bytes=Uint8Array.from(binary,function(ch){return ch.charCodeAt(0);});code=new TextDecoder().decode(bytes);}else{code=decodeURIComponent(escape(binary));}var s=document.createElement("script");s.text=code;document.head.appendChild(s);})();</script>`
+        : `<script src=\"engine.js\"></script>`;
+      const exportScale = screenSize?.value === "1x" ? 1 : 2;
+      const runnerHtml = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GameBASIC Runner</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      margin: 0;
+      background: #0b0f14;
+      color: #e6edf3;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #screenHost {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
+    #screen {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    .hidden-ui {
+      position: absolute;
+      left: -9999px;
+      top: -9999px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="screenHost">
+    <canvas id="screen" width="320" height="200"></canvas>
+  </div>
+
+  <div class="hidden-ui">
+    <button id="runBtn">Run</button>
+    <button id="stopBtn">Stop</button>
+    <button id="saveBtn">Save</button>
+    <button id="loadBtn">Load</button>
+    <input id="fileInput" type="file" />
+    <pre id="highlight"></pre>
+    <pre id="lineNumbers"></pre>
+    <textarea id="programInput"></textarea>
+    <select id="screenSize">
+      <option value="2x" selected>640x400</option>
+      <option value="1x">320x200</option>
+    </select>
+    <button id="popoutBtn">Pop out</button>
+
+    <button id="spriteEditorBtn" type="button">Sprite Editor</button>
+    <div id="spriteEditorModal" aria-hidden="true"></div>
+    <button id="spriteEditorClose" type="button">Close</button>
+    <input id="spriteFileInput" type="file" />
+    <button id="spriteLoadBtn" type="button">Load PNG</button>
+    <button id="spriteSaveBtn" type="button">Save PNG</button>
+    <button id="spriteUndoBtn" type="button">Undo</button>
+    <button id="spriteRedoBtn" type="button">Redo</button>
+    <input id="spriteWidth" type="number" value="64" />
+    <input id="spriteHeight" type="number" value="64" />
+    <button id="spriteResizeBtn" type="button">Set Size</button>
+    <input id="spriteFrameW" type="number" value="16" />
+    <input id="spriteFrameH" type="number" value="16" />
+    <button id="spriteToolBrush" type="button">Brush</button>
+    <button id="spriteToolFill" type="button">Fill</button>
+    <input id="spriteBrush" type="number" value="1" />
+    <input id="spriteColor" type="color" value="#ffd166" />
+    <input id="spriteGridToggle" type="checkbox" checked />
+    <div id="spriteCanvasStage"></div>
+    <canvas id="spriteEditorCanvas" width="64" height="64"></canvas>
+    <canvas id="spriteGridCanvas" width="64" height="64"></canvas>
+    <textarea id="spriteDataUrl"></textarea>
+    <button id="spriteCopyBtn" type="button">Copy</button>
+  </div>
+
+  ${engineTag}
+  <script>
+    (function () {
+      const canvas = document.getElementById("screen");
+      const host = document.getElementById("screenHost");
+      const resizeCanvas = () => {
+        const maxW = window.innerWidth;
+        const maxH = window.innerHeight;
+        const scale = Math.max(1, Math.floor(Math.min(maxW / 320, maxH / 200)));
+        const targetW = 320 * scale;
+        const targetH = 200 * scale;
+        if (canvas) {
+          canvas.style.width = targetW + "px";
+          canvas.style.height = targetH + "px";
+        }
+        if (host) {
+          host.style.width = targetW + "px";
+          host.style.height = targetH + "px";
+        }
+      };
+      resizeCanvas();
+      window.addEventListener("resize", resizeCanvas);
+      const b64 = "${b64}";
+      const decodeBase64 = (b64Text) => {
+        const binary = atob(b64Text);
+        if (window.TextDecoder) {
+          const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+          return new TextDecoder().decode(bytes);
+        }
+        return decodeURIComponent(escape(binary));
+      };
+      const code = decodeBase64(b64);
+      const input = document.getElementById("programInput");
+      const run = document.getElementById("runBtn");
+      input.value = code.replace(/\\r\\n/g, "\\n");
+      setTimeout(() => run.click(), 0);
+    })();
+  </script>
+</body>
+</html>`;
+  const compactHtml = runnerHtml.replace(/\r?\n/g, "");
+
+      const saveAsFile = async () => {
+        if (window.showSaveFilePicker && window.isSecureContext) {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: "gamebasic-runner.html",
+            types: [
+              {
+                description: "HTML",
+                accept: { "text/html": [".html"] }
+              }
+            ]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(compactHtml);
+          await writable.close();
+          return;
+        }
+        const blob = new Blob([compactHtml], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "gamebasic-runner.html";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      };
+
+      try {
+        await saveAsFile();
+      } catch (err) {
+        console.error(err);
+      }
+    });
+  }
   spriteEditorBtn.addEventListener("click", openSpriteEditor);
   spriteEditorClose.addEventListener("click", closeSpriteEditor);
   spriteEditorModal.addEventListener("click", (event) => {
@@ -2803,6 +3228,57 @@ END`;
   });
   programInput.addEventListener("input", syncHighlight);
   programInput.addEventListener("input", syncLineNumbers);
+  programInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Tab") {
+      return;
+    }
+    event.preventDefault();
+    const tab = "\t";
+    const value = programInput.value;
+    const start = programInput.selectionStart ?? 0;
+    const end = programInput.selectionEnd ?? 0;
+
+    if (start === end) {
+      programInput.value = value.slice(0, start) + tab + value.slice(end);
+      programInput.selectionStart = start + tab.length;
+      programInput.selectionEnd = start + tab.length;
+    } else {
+      const before = value.slice(0, start);
+      const selected = value.slice(start, end);
+      const after = value.slice(end);
+      const lines = selected.split("\n");
+
+      if (event.shiftKey) {
+        let removed = 0;
+        const newLines = lines.map((line) => {
+          if (line.startsWith("\t")) {
+            removed += 1;
+            return line.slice(1);
+          }
+          if (line.startsWith("  ")) {
+            removed += 2;
+            return line.slice(2);
+          }
+          if (line.startsWith(" ")) {
+            removed += 1;
+            return line.slice(1);
+          }
+          return line;
+        });
+        programInput.value = before + newLines.join("\n") + after;
+        programInput.selectionStart = start;
+        programInput.selectionEnd = Math.max(start, end - removed);
+      } else {
+        const newLines = lines.map((line) => tab + line);
+        programInput.value = before + newLines.join("\n") + after;
+        programInput.selectionStart = start;
+        programInput.selectionEnd = end + tab.length * lines.length;
+      }
+    }
+
+    syncHighlight();
+    syncLineNumbers();
+  });
   programInput.addEventListener("scroll", () => {
     highlight.scrollTop = programInput.scrollTop;
     highlight.scrollLeft = programInput.scrollLeft;

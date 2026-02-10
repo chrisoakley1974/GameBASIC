@@ -3,14 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BasicEngine</title>
+  <title>GameBASIC</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
     <header>
-      <h1>BasicEngine</h1>
-      <p>Type BASIC-style commands with line numbers, then Run.</p>
+      <h1>GameBASIC</h1>
     </header>
 
     <div class="layout">
@@ -18,11 +17,14 @@
         <div class="toolbar">
           <button id="runBtn">Run</button>
           <button id="stopBtn">Stop</button>
-          <button id="clearOutputBtn">Clear Output</button>
           <button id="spriteEditorBtn" type="button">Sprite Editor</button>
           <button id="saveBtn">Save</button>
           <button id="loadBtn">Load</button>
           <input id="fileInput" type="file" accept=".basic,.bas,.txt" hidden />
+          <span class="toolbar-spacer"></span>
+          <button id="exportHtmlBtn" type="button">Export HTML</button>
+          <span id="shareStatus" class="toolbar-status" aria-live="polite"></span>
+          <a class="toolbar-link" href="help.html" target="_blank" rel="noopener">Help</a>
         </div>
         <div class="code-editor">
           <pre id="lineNumbers" aria-hidden="true"></pre>
@@ -51,9 +53,7 @@
       </section>
     </div>
 
-    <footer>
-      <p>Supported statements: REM, LET/assignment, DIM, DATA, READ, RESTORE, IF ... THEN / ENDIF, FOR / NEXT, WHILE / ENDWHILE, RETURN, END. Built-in functions: PRINT(), TEXT(x,y,text[,color]), TEXTCENTER(text[,color]), SETTEXTCOLOR(color), PIXELMODE(0/1), LINE(x1,y1,x2,y2[,color]), RECT(x,y,w,h[,color]), FRECT(x,y,w,h[,color]), ELLIPSE(x,y,rx,ry[,color]), FELLIPSE(x,y,rx,ry[,color]), ARC(x,y,r,startDeg,endDeg[,color]), FARC(x,y,r,startDeg,endDeg[,color]), POLY(x1,y1,...[,color]), FPOLY(x1,y1,...[,color]), RECTHIT(x1,y1,w1,h1,x2,y2,w2,h2), ELLIPSEHIT(cx,cy,rx,ry,px,py), INPUT(), CLS(), CLEARSCREEN(), WAIT(seconds), BORDER(color), SCREENBG(color), SPRITE(), SPRITEBANK(), SETSPRITEFRAME(), SETSPRITETRANSFORM(), SETHOTSPOT(), DRAWSPRITE(), MOVESPRITE(), SPRITEX(), SPRITEY(), SPRITEFRAME(), SPRITESCALEX(), SPRITESCALEY(), SPRITEROT(), COLLIDES(), FLIP(), RND(), INT(), STRLEN(), BANKCREATE(), BANKLOAD(id, data), BANKLOADSPRITE(id, dataUrl, frameW, frameH), BANKFREE(), BANKCOPY(), BANKPEEK(), BANKPOKE(), SETFONT(), SOUND(0/1/2/4), KEYDOWN(), LASTKEY()</p>
-    </footer>
+    
   </div>
 
   <div id="spriteEditorModal" class="modal" aria-hidden="true">

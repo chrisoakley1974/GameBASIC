@@ -185,6 +185,30 @@ TEXT(10, 10, "Outlined text")</pre></div>
   </div>
 
   <div class="cmd">
+    <strong>SETTEXTSCALE(x, y)</strong>
+    <p><span class="param">x, y:</span> Scale factors (e.g., 0.5, 1, 2)</p>
+    <p>Set text scaling for width and height.</p>
+    <div class="example"><pre>SETTEXTSCALE(0.5, 1)  REM 4x8 text
+SETTEXTSCALE(1, 2)    REM 8x16 text</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETTEXTSCALEX(x)</strong>
+    <p><span class="param">x:</span> Width scale factor</p>
+    <p>Set text width scale only.</p>
+    <div class="example"><pre>SETTEXTSCALEX(0.5)
+PRINT("Half-width text")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETTEXTSCALEY(y)</strong>
+    <p><span class="param">y:</span> Height scale factor</p>
+    <p>Set text height scale only.</p>
+    <div class="example"><pre>SETTEXTSCALEY(1.5)
+TEXT(10, 10, "Taller text")</pre></div>
+  </div>
+
+  <div class="cmd">
     <strong>SETPENCOLOR(color)</strong>
     <p>Alias for SETTEXTCOLOR().</p>
   </div>
@@ -502,11 +526,11 @@ SCREENDRAWRECT("SCREEN", 0, 100, 160, 100, 0, 1)  REM Flipped vertically</pre></
   <h2>Input & Control</h2>
 
   <div class="cmd">
-    <strong>INPUT([prompt], [cursor])</strong>
-    <p><span class="param">prompt:</span> Optional message to display | <span class="param">cursor:</span> Single character to show (default "_")</p>
+    <strong>INPUT([prompt], [cursor], [maxLen])</strong>
+    <p><span class="param">prompt:</span> Optional message to display | <span class="param">cursor:</span> Single character to show (default "_") | <span class="param">maxLen:</span> Optional maximum characters</p>
     <p>Display a prompt and wait for text input. Returns the entered string.</p>
     <div class="example"><pre>NAME = INPUT("What is your name?")
-AGE = INPUT("Age:", ">")
+AGE = INPUT("Age:", ">", 3)
 PRINT("Hello,", NAME)</pre></div>
   </div>
 

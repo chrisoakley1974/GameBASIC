@@ -371,11 +371,14 @@ ENDWHILE`;
     state.lastKey = "";
     state.textColor = "#d8f3ff";
     state.textOutlineColor = null;
+    state.textScaleX = 1;
+    state.textScaleY = 1;
     state.inputActive = false;
     state.inputPrompt = "";
     state.inputBuffer = "";
     state.inputCursor = 0;
     state.inputCursorChar = "_";
+    state.inputMaxLen = null;
     state.inputResolve = null;
     state.screenFocused = false;
     state.targetFps = 60;
@@ -480,16 +483,19 @@ ENDWHILE`;
     updateScreenFocus();
   });
 
-  function startInputPrompt(promptText, cursorChar) {
+  function startInputPrompt(promptText, cursorChar, maxLen) {
     const prompt = String(promptText ?? "INPUT:");
     const cursor = cursorChar === undefined || cursorChar === null
       ? "_"
       : String(cursorChar);
+    const limitRaw = maxLen === undefined || maxLen === null ? null : Number(maxLen);
+    const limit = Number.isFinite(limitRaw) && limitRaw >= 0 ? Math.floor(limitRaw) : null;
     state.inputActive = true;
     state.inputPrompt = prompt;
     state.inputBuffer = "";
     state.inputCursor = 0;
     state.inputCursorChar = cursor.length > 0 ? cursor[0] : "_";
+    state.inputMaxLen = limit;
     state.inputResolve = null;
     state.keysDown.clear();
     state.lastKey = "";
@@ -537,6 +543,7 @@ ENDWHILE`;
       state.inputBuffer = "";
       state.inputCursor = 0;
       state.inputCursorChar = "_";
+      state.inputMaxLen = null;
       state.inputResolve = null;
       renderDisplay();
       if (resolve) {
@@ -579,6 +586,10 @@ ENDWHILE`;
     }
 
     if (event.key.length === 1) {
+      if (state.inputMaxLen !== null && state.inputBuffer.length >= state.inputMaxLen) {
+        renderDisplay();
+        return;
+      }
       const before = state.inputBuffer.slice(0, state.inputCursor);
       const after = state.inputBuffer.slice(state.inputCursor);
       state.inputBuffer = `${before}${event.key}${after}`;
@@ -675,12 +686,19 @@ ENDWHILE`;
       const window = getWindowForOp(op);
       const baseX = window ? window.x : 0;
       const baseY = window ? window.y : 0;
-      const maxLinesForOp = window ? Math.floor(window.h / lineHeight) : maxLines;
       const lineKey = getLineKey(op.windowId);
       const windowClip = beginWindowClip(window);
       if (op.type === "text") {
         let lineIndex = lineIndexMap.get(lineKey) ?? 0;
-        const charsPerLine = window ? Math.floor(window.w / FONT_W) : Math.floor(canvas.width / FONT_W);
+        const scaleX = Number.isFinite(op.scaleX) && op.scaleX > 0 ? op.scaleX : 1;
+        const scaleY = Number.isFinite(op.scaleY) && op.scaleY > 0 ? op.scaleY : 1;
+        const effectiveFontW = FONT_W * scaleX;
+        const lineHeightForOp = FONT_H * scaleY;
+        const maxLinesForOp = window ? Math.floor(window.h / lineHeightForOp) : Math.floor(canvas.height / lineHeightForOp);
+        const rawCharsPerLine = window
+          ? Math.floor(window.w / effectiveFontW)
+          : Math.floor(canvas.width / effectiveFontW);
+        const charsPerLine = Math.max(1, rawCharsPerLine);
         const lines = [];
         let currentLine = "";
         for (let i = 0; i < op.text.length; i += 1) {
@@ -697,19 +715,24 @@ ENDWHILE`;
           if (lineIndex >= maxLinesForOp) {
             break;
           }
-          drawBitmapText(line, baseX, baseY + lineIndex * lineHeight, op.color || state.textColor || "#d8f3ff", op.outlineColor);
+          drawBitmapText(line, baseX, baseY + lineIndex * lineHeightForOp, op.color || state.textColor || "#d8f3ff", op.outlineColor, scaleX, scaleY);
           lineIndex += 1;
         }
         lineIndexMap.set(lineKey, lineIndex);
       } else if (op.type === "textAt") {
-        drawBitmapText(op.text, baseX + op.x, baseY + op.y, op.color || state.textColor || "#d8f3ff", op.outlineColor);
+        const scaleX = Number.isFinite(op.scaleX) && op.scaleX > 0 ? op.scaleX : 1;
+        const scaleY = Number.isFinite(op.scaleY) && op.scaleY > 0 ? op.scaleY : 1;
+        drawBitmapText(op.text, baseX + op.x, baseY + op.y, op.color || state.textColor || "#d8f3ff", op.outlineColor, scaleX, scaleY);
       } else if (op.type === "textCenter") {
-        const width = op.text.length * FONT_W;
+        const scaleX = Number.isFinite(op.scaleX) && op.scaleX > 0 ? op.scaleX : 1;
+        const scaleY = Number.isFinite(op.scaleY) && op.scaleY > 0 ? op.scaleY : 1;
+        const width = op.text.length * FONT_W * scaleX;
         const cx = window ? window.w : canvas.width;
         const cy = window ? window.h : canvas.height;
         const x = Math.max(0, Math.floor((cx - width) / 2)) + baseX;
-        const y = op.y !== null ? op.y + baseY : Math.max(0, Math.floor((cy - FONT_H) / 2)) + baseY;
-        drawBitmapText(op.text, x, y, op.color || state.textColor || "#d8f3ff", op.outlineColor);
+        const height = FONT_H * scaleY;
+        const y = op.y !== null ? op.y + baseY : Math.max(0, Math.floor((cy - height) / 2)) + baseY;
+        drawBitmapText(op.text, x, y, op.color || state.textColor || "#d8f3ff", op.outlineColor, scaleX, scaleY);
       } else if (op.type === "line") {
         if (state.pixelMode) {
           drawLinePixel(op.x1 + baseX, op.y1 + baseY, op.x2 + baseX, op.y2 + baseY, op.color || state.textColor || "#d8f3ff");
@@ -932,21 +955,71 @@ ENDWHILE`;
         : (state.windows.get(state.currentWindowId) || null);
       const baseX = inputWindow ? inputWindow.x : 0;
       const baseY = inputWindow ? inputWindow.y : 0;
-      const maxLinesForInput = inputWindow ? Math.floor(inputWindow.h / lineHeight) : maxLines;
       const inputKey = getLineKey(state.currentWindowId);
       const inputIndex = lineIndexMap.get(inputKey) ?? 0;
+      const scaleX = Number.isFinite(state.textScaleX) && state.textScaleX > 0 ? state.textScaleX : 1;
+      const scaleY = Number.isFinite(state.textScaleY) && state.textScaleY > 0 ? state.textScaleY : 1;
+      const lineHeightForInput = FONT_H * scaleY;
+      const maxLinesForInput = inputWindow
+        ? Math.floor(inputWindow.h / lineHeightForInput)
+        : Math.floor(canvas.height / lineHeightForInput);
       const inputLine = Math.min(inputIndex, Math.max(0, maxLinesForInput - 1));
-      const y = baseY + inputLine * lineHeight;
       const inputClip = beginWindowClip(inputWindow);
-      drawBitmapText(lineText, baseX, y, state.textColor || "#d8f3ff");
+      const effectiveFontW = FONT_W * scaleX;
+      const rawCharsPerLine = inputWindow
+        ? Math.floor(inputWindow.w / effectiveFontW)
+        : Math.floor(canvas.width / effectiveFontW);
+      const charsPerLine = Math.max(1, rawCharsPerLine);
+      const lines = [];
+      let currentLine = "";
+      for (let i = 0; i < lineText.length; i += 1) {
+        if (currentLine.length >= charsPerLine) {
+          lines.push(currentLine);
+          currentLine = "";
+        }
+        currentLine += lineText[i];
+      }
+      if (currentLine.length > 0) {
+        lines.push(currentLine);
+      }
+      for (let i = 0; i < lines.length; i += 1) {
+        const lineRow = inputLine + i;
+        if (lineRow >= maxLinesForInput) {
+          break;
+        }
+        const y = baseY + lineRow * lineHeightForInput;
+        drawBitmapText(lines[i], baseX, y, state.textColor || "#d8f3ff", null, scaleX, scaleY);
+      }
       endWindowClip(inputClip);
     }
   }
 
-  function drawBitmapText(text, x, y, color, outlineColor) {
-    ctx.fillStyle = color;
+  function drawBitmapText(text, x, y, color, outlineColor, scaleX = 1, scaleY = 1) {
+    const sx = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1;
+    const sy = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : 1;
+    const baseX = Math.round(x);
+    const baseY = Math.round(y);
+    if (sx === 1 && sy === 1) {
+      for (let i = 0; i < text.length; i += 1) {
+        drawChar(text[i], baseX + i * FONT_W, baseY, color, outlineColor);
+      }
+      return;
+    }
+    if (sx === 0.5 && Number.isInteger(sy)) {
+      const advance = 4;
+      for (let i = 0; i < text.length; i += 1) {
+        drawCharHalfWidthScaled(text[i], baseX + i * advance, baseY, color, outlineColor, sy);
+      }
+      return;
+    }
+    if (Number.isInteger(sx) && Number.isInteger(sy)) {
+      for (let i = 0; i < text.length; i += 1) {
+        drawCharScaled(text[i], baseX + i * FONT_W * sx, baseY, color, outlineColor, sx, sy);
+      }
+      return;
+    }
     for (let i = 0; i < text.length; i += 1) {
-      drawChar(text[i], x + i * FONT_W, y, color, outlineColor);
+      drawCharScaledNearest(text[i], baseX + i * FONT_W * sx, baseY, color, outlineColor, sx, sy);
     }
   }
 
@@ -983,6 +1056,202 @@ ENDWHILE`;
       for (let col = 0; col < FONT_W; col += 1) {
         if (bits & (1 << (7 - col))) {
           ctx.fillRect(x + col, y + row, 1, 1);
+        }
+      }
+    }
+  }
+
+  function drawCharHalfWidth(ch, x, y, color, outlineColor) {
+    const code = ch.charCodeAt(0);
+    const index = (code >= 0 && code < 128) ? code : 63;
+    const fontData = state.banks.get(state.fontBank) || DEFAULT_FONT_DATA;
+    const base = index * 8;
+
+    const drawPixel = (px, py) => {
+      ctx.fillRect(px, py, 1, 1);
+    };
+
+    if (outlineColor) {
+      ctx.fillStyle = outlineColor;
+      for (let row = 0; row < FONT_H; row += 1) {
+        const bits = fontData[base + row] || 0;
+        for (let col = 0; col < 4; col += 1) {
+          const leftBit = 1 << (7 - (col * 2));
+          const rightBit = 1 << (7 - (col * 2 + 1));
+          if (bits & (leftBit | rightBit)) {
+            for (let dx = -1; dx <= 1; dx += 1) {
+              for (let dy = -1; dy <= 1; dy += 1) {
+                if (dx !== 0 || dy !== 0) {
+                  drawPixel(x + col + dx, y + row + dy);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ctx.fillStyle = color;
+    for (let row = 0; row < FONT_H; row += 1) {
+      const bits = fontData[base + row] || 0;
+      for (let col = 0; col < 4; col += 1) {
+        const leftBit = 1 << (7 - (col * 2));
+        const rightBit = 1 << (7 - (col * 2 + 1));
+        if (bits & (leftBit | rightBit)) {
+          drawPixel(x + col, y + row);
+        }
+      }
+    }
+  }
+
+  function drawCharHalfWidthScaled(ch, x, y, color, outlineColor, scaleY) {
+    const baseX = Math.round(x);
+    const baseY = Math.round(y);
+    const code = ch.charCodeAt(0);
+    const index = (code >= 0 && code < 128) ? code : 63;
+    const fontData = state.banks.get(state.fontBank) || DEFAULT_FONT_DATA;
+    const base = index * 8;
+    const sy = Number.isFinite(scaleY) && scaleY > 0 ? Math.floor(scaleY) : 1;
+
+    const drawPixel = (px, py) => {
+      ctx.fillRect(baseX + px, baseY + py, 1, sy);
+    };
+
+    if (outlineColor) {
+      ctx.fillStyle = outlineColor;
+      for (let row = 0; row < FONT_H; row += 1) {
+        const bits = fontData[base + row] || 0;
+        for (let col = 0; col < 4; col += 1) {
+          const leftBit = 1 << (7 - (col * 2));
+          const rightBit = 1 << (7 - (col * 2 + 1));
+          if (bits & (leftBit | rightBit)) {
+            for (let dx = -1; dx <= 1; dx += 1) {
+              for (let dy = -1; dy <= 1; dy += 1) {
+                if (dx !== 0 || dy !== 0) {
+                  drawPixel(col + dx, row * sy + dy);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ctx.fillStyle = color;
+    for (let row = 0; row < FONT_H; row += 1) {
+      const bits = fontData[base + row] || 0;
+      for (let col = 0; col < 4; col += 1) {
+        const leftBit = 1 << (7 - (col * 2));
+        const rightBit = 1 << (7 - (col * 2 + 1));
+        if (bits & (leftBit | rightBit)) {
+          drawPixel(col, row * sy);
+        }
+      }
+    }
+  }
+
+  function drawCharScaled(ch, x, y, color, outlineColor, scaleX, scaleY) {
+    const baseX = Math.round(x);
+    const baseY = Math.round(y);
+    const code = ch.charCodeAt(0);
+    const index = (code >= 0 && code < 128) ? code : 63;
+    const fontData = state.banks.get(state.fontBank) || DEFAULT_FONT_DATA;
+    const base = index * 8;
+    const sx = Math.floor(scaleX);
+    const sy = Math.floor(scaleY);
+
+    const drawPixel = (px, py) => {
+      ctx.fillRect(baseX + px, baseY + py, sx, sy);
+    };
+
+    if (outlineColor) {
+      ctx.fillStyle = outlineColor;
+      for (let row = 0; row < FONT_H; row += 1) {
+        const bits = fontData[base + row] || 0;
+        for (let col = 0; col < FONT_W; col += 1) {
+          if (bits & (1 << (7 - col))) {
+            for (let dx = -1; dx <= 1; dx += 1) {
+              for (let dy = -1; dy <= 1; dy += 1) {
+                if (dx !== 0 || dy !== 0) {
+                  drawPixel(col * sx + dx, row * sy + dy);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ctx.fillStyle = color;
+    for (let row = 0; row < FONT_H; row += 1) {
+      const bits = fontData[base + row] || 0;
+      for (let col = 0; col < FONT_W; col += 1) {
+        if (bits & (1 << (7 - col))) {
+          drawPixel(col * sx, row * sy);
+        }
+      }
+    }
+  }
+
+  function drawCharScaledNearest(ch, x, y, color, outlineColor, scaleX, scaleY) {
+    const baseX = Math.round(x);
+    const baseY = Math.round(y);
+    const code = ch.charCodeAt(0);
+    const index = (code >= 0 && code < 128) ? code : 63;
+    const fontData = state.banks.get(state.fontBank) || DEFAULT_FONT_DATA;
+    const base = index * 8;
+    const sx = Number.isFinite(scaleX) && scaleX > 0 ? scaleX : 1;
+    const sy = Number.isFinite(scaleY) && scaleY > 0 ? scaleY : 1;
+
+    const colSpans = Array.from({ length: FONT_W }, (_, col) => {
+      const x0 = Math.floor(col * sx);
+      const x1 = Math.floor((col + 1) * sx);
+      return { x: x0, w: Math.max(0, x1 - x0) };
+    });
+    const rowSpans = Array.from({ length: FONT_H }, (_, row) => {
+      const y0 = Math.floor(row * sy);
+      const y1 = Math.floor((row + 1) * sy);
+      return { y: y0, h: Math.max(0, y1 - y0) };
+    });
+
+    const drawPixel = (px, py, w, h) => {
+      if (w <= 0 || h <= 0) {
+        return;
+      }
+      ctx.fillRect(baseX + px, baseY + py, w, h);
+    };
+
+    if (outlineColor) {
+      ctx.fillStyle = outlineColor;
+      for (let row = 0; row < FONT_H; row += 1) {
+        const bits = fontData[base + row] || 0;
+        const rowSpan = rowSpans[row];
+        for (let col = 0; col < FONT_W; col += 1) {
+          if (bits & (1 << (7 - col))) {
+            const colSpan = colSpans[col];
+            if (colSpan.w <= 0 || rowSpan.h <= 0) {
+              continue;
+            }
+            for (let dx = -1; dx <= 1; dx += 1) {
+              for (let dy = -1; dy <= 1; dy += 1) {
+                if (dx !== 0 || dy !== 0) {
+                  drawPixel(colSpan.x + dx, rowSpan.y + dy, colSpan.w, rowSpan.h);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    ctx.fillStyle = color;
+    for (let row = 0; row < FONT_H; row += 1) {
+      const bits = fontData[base + row] || 0;
+      const rowSpan = rowSpans[row];
+      for (let col = 0; col < FONT_W; col += 1) {
+        if (bits & (1 << (7 - col))) {
+          const colSpan = colSpans[col];
+          drawPixel(colSpan.x, rowSpan.y, colSpan.w, rowSpan.h);
         }
       }
     }
@@ -1788,7 +2057,9 @@ ENDWHILE`;
         type: "text",
         text: args.map((val) => String(val)).join(" "),
         color: state.textColor,
-        outlineColor: state.textOutlineColor
+        outlineColor: state.textOutlineColor,
+        scaleX: state.textScaleX,
+        scaleY: state.textScaleY
       });
       return null;
     },
@@ -1799,17 +2070,36 @@ ENDWHILE`;
         y: Number(y),
         text: String(text),
         color: color ? String(color) : state.textColor,
-        outlineColor: state.textOutlineColor
+        outlineColor: state.textOutlineColor,
+        scaleX: state.textScaleX,
+        scaleY: state.textScaleY
       });
       return null;
     },
     TEXTCENTER: (text, y, color) => {
       const yPos = y !== undefined ? Number(y) : null;
-      pushDisplayOp({ type: "textCenter", text: String(text), y: yPos, color: color ? String(color) : state.textColor, outlineColor: state.textOutlineColor });
+      pushDisplayOp({ type: "textCenter", text: String(text), y: yPos, color: color ? String(color) : state.textColor, outlineColor: state.textOutlineColor, scaleX: state.textScaleX, scaleY: state.textScaleY });
       return null;
     },
     SETTEXTCOLOR: (color) => {
       state.textColor = String(color ?? "#d8f3ff");
+      return null;
+    },
+    SETTEXTSCALEX: (scaleX) => {
+      const value = Number(scaleX);
+      state.textScaleX = Number.isFinite(value) && value > 0 ? value : 1;
+      return null;
+    },
+    SETTEXTSCALEY: (scaleY) => {
+      const value = Number(scaleY);
+      state.textScaleY = Number.isFinite(value) && value > 0 ? value : 1;
+      return null;
+    },
+    SETTEXTSCALE: (scaleX, scaleY) => {
+      const sx = Number(scaleX);
+      const sy = Number(scaleY);
+      state.textScaleX = Number.isFinite(sx) && sx > 0 ? sx : 1;
+      state.textScaleY = Number.isFinite(sy) && sy > 0 ? sy : 1;
       return null;
     },
     SETTEXTOUTLINE: (color) => {
@@ -2392,8 +2682,8 @@ ENDWHILE`;
       state.nextFrameTime = 0;
       return null;
     },
-    INPUT: (promptText = "INPUT:", cursorChar = "_") => {
-      return startInputPrompt(promptText, cursorChar);
+    INPUT: (promptText = "INPUT:", cursorChar = "_", maxLen = null) => {
+      return startInputPrompt(promptText, cursorChar, maxLen);
     },
     WAIT: (seconds) => {
       const sec = Number(seconds);
@@ -3441,6 +3731,10 @@ ENDWHILE`;
     parsePositiveInt(spriteHeightInput.value, spriteEditorCanvas.height),
     true
   );
+  const preferSmallScreen = window.matchMedia && window.matchMedia("(max-width: 768px), (max-height: 500px)").matches;
+  if (preferSmallScreen) {
+    screenSize.value = "1x";
+  }
   applyScreenSize(screenSize.value);
   if (document.fonts && document.fonts.ready) {
     document.fonts.ready.then(syncLineNumbers);

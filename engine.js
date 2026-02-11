@@ -131,98 +131,104 @@
     0x18,0x18,0x18,0x00,0x18,0x18,0x18,0x00, 0x70,0x18,0x18,0x0E,0x18,0x18,0x70,0x00,
     0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x10,0x38,0x6C,0xC6,0xC6,0xFE,0x00
   ]);
-  const sample = `REM Bouncing circles + collisions demo
-CLS()
-CLEARSCREEN()
+  const sample = `REM 3D Spinning Cube Demo
+
+SETFPS(30)
 PIXELMODE(1)
 
-WINDOW("PLAY", 10, 10, 300, 150)
-USEWINDOW("PLAY")
+REM Cube vertices - 8 corners doubled size
+DATA VERTS, -60,-60,-60, 60,-60,-60, 60,60,-60, -60,60,-60, -60,-60,60, 60,-60,60, 60,60,60, -60,60,60
 
-LET COUNT = 4
-DIM CX(COUNT - 1)
-DIM CY(COUNT - 1)
-DIM VX(COUNT - 1)
-DIM VY(COUNT - 1)
-DIM R(COUNT - 1)
-DIM COL(COUNT - 1)
+REM Cube edges - 12 total
+DATA EDGES, 0,1, 1,2, 2,3, 3,0, 4,5, 5,6, 6,7, 7,4, 0,4, 1,5, 2,6, 3,7
 
-LET COL(0) = "#ff6b6b"
-LET COL(1) = "#4cc2ff"
-LET COL(2) = "#ffd166"
-LET COL(3) = "#50fa7b"
-
-LET R(0) = 10
-LET R(1) = 14
-LET R(2) = 18
-LET R(3) = 12
-
-FOR I = 0 TO COUNT - 1
-  LET CX(I) = 30 + I * 60
-  LET CY(I) = 30 + I * 20
-  LET VX(I) = 1 + RND() * 1.5
-  LET VY(I) = 1 + RND() * 1.2
+REM Read vertices into bank
+BANKCREATE(1, 24)
+RESTORE VERTS
+FOR I=1 TO 8
+  READ VID, X, Y, Z
+  BANKPOKE(1, (I-1)*3, X)
+  BANKPOKE(1, (I-1)*3+1, Y)
+  BANKPOKE(1, (I-1)*3+2, Z)
 NEXT I
 
+REM Read edges into bank
+BANKCREATE(2, 24)
+RESTORE EDGES
+FOR I=1 TO 12
+  READ EID, A, B
+  BANKPOKE(2, (I-1)*2, A)
+  BANKPOKE(2, (I-1)*2+1, B)
+NEXT I
+
+REM Arrays for projected vertices
+DIM PROJX(7)
+DIM PROJY(7)
+
+REM Rotation angles
+ANGLEX = 0
+ANGLEY = 0
+ANGLEZ = 0
+
+REM Main loop
 WHILE 1
   CLEARSCREEN()
-
-  LET WW = WINDOWW()
-  LET WH = WINDOWH()
-
-  FOR I = 0 TO COUNT - 1
-    LET CX(I) = CX(I) + VX(I)
-    LET CY(I) = CY(I) + VY(I)
-
-    IF CX(I) - R(I) <= 0 THEN
-      LET CX(I) = R(I)
-      LET VX(I) = -VX(I)
-      SOUND(2, 8, 0.05)
-    ENDIF
-    IF CX(I) + R(I) >= WW THEN
-      LET CX(I) = WW - R(I)
-      LET VX(I) = -VX(I)
-      SOUND(2, 8, 0.05)
-    ENDIF
-    IF CY(I) - R(I) <= 0 THEN
-      LET CY(I) = R(I)
-      LET VY(I) = -VY(I)
-      SOUND(2, 8, 0.05)
-    ENDIF
-    IF CY(I) + R(I) >= WH THEN
-      LET CY(I) = WH - R(I)
-      LET VY(I) = -VY(I)
-      SOUND(2, 8, 0.05)
-    ENDIF
+  
+  SETTEXTCOLOR("#c8c864")
+  PRINT("3D CUBE")
+  
+  ANGLEX = ANGLEX + 0.01
+  ANGLEY = ANGLEY + 0.015
+  ANGLEZ = ANGLEZ + 0.008
+  
+  REM Transform and project all vertices
+  FOR I=0 TO 7
+    X = BANKPEEK(1, I*3)
+    Y = BANKPEEK(1, I*3+1)
+    Z = BANKPEEK(1, I*3+2)
+    
+    REM Rotate around X axis
+    CX = COS(ANGLEX)
+    SX = SIN(ANGLEX)
+    Y1 = Y*CX - Z*SX
+    Z1 = Y*SX + Z*CX
+    
+    REM Rotate around Y axis
+    CY = COS(ANGLEY)
+    SY = SIN(ANGLEY)
+    X2 = X*CY + Z1*SY
+    Z2 = -X*SY + Z1*CY
+    Y2 = Y1
+    
+    REM Rotate around Z axis
+    CZ = COS(ANGLEZ)
+    SZ = SIN(ANGLEZ)
+    X3 = X2*CZ - Y2*SZ
+    Y3 = X2*SZ + Y2*CZ
+    
+    REM Perspective projection
+    FOCAL = 300
+    SCALE = FOCAL / (FOCAL + Z2 + 80)
+    PROJX(I) = X3 * SCALE + 160
+    PROJY(I) = Y3 * SCALE + 100
   NEXT I
-
-  FOR I = 0 TO COUNT - 2
-    FOR J = I + 1 TO COUNT - 1
-      LET RS = R(I) + R(J)
-      IF ELLIPSEHIT(CX(I), CY(I), RS, RS, CX(J), CY(J)) THEN
-        LET TX = VX(I)
-        LET VX(I) = VX(J)
-        LET VX(J) = TX
-        LET TY = VY(I)
-        LET VY(I) = VY(J)
-        LET VY(J) = TY
-        LET CX(I) = CX(I) + VX(I)
-        LET CY(I) = CY(I) + VY(I)
-        LET CX(J) = CX(J) + VX(J)
-        LET CY(J) = CY(J) + VY(J)
-        SOUND(2, 10, 0.05)
-      ENDIF
-    NEXT J
+  
+  REM Draw all edges
+  SETTEXTCOLOR("#00c8ff")
+  FOR I=0 TO 11
+    A = BANKPEEK(2, I*2)
+    B = BANKPEEK(2, I*2+1)
+    
+    X1 = PROJX(A)
+    Y1 = PROJY(A)
+    X2 = PROJX(B)
+    Y2 = PROJY(B)
+    
+    LINE(X1, Y1, X2, Y2)
   NEXT I
-
-  FOR I = 0 TO COUNT - 1
-    FELLIPSE(CX(I), CY(I), R(I), R(I), COL(I))
-    ELLIPSE(CX(I), CY(I), R(I), R(I), "#0b1119")
-  NEXT I
-
+  
   FLIP()
-ENDWHILE
-END`;
+ENDWHILE`;
   programInput.value = sample;
 
   function applyScreenSize(mode) {
@@ -356,7 +362,7 @@ END`;
     state.banks = new Map();
     state.banks.set(0, new Uint8Array(DEFAULT_FONT_DATA));
     state.fontBank = 0;
-    state.pixelMode = 0;
+    state.pixelMode = 1;
     state.dataList = [];
     state.dataIndex = 0;
     state.dataIdMap = new Map();
@@ -364,6 +370,7 @@ END`;
     state.keysDown = new Set();
     state.lastKey = "";
     state.textColor = "#d8f3ff";
+    state.textOutlineColor = null;
     state.inputActive = false;
     state.inputPrompt = "";
     state.inputBuffer = "";
@@ -672,22 +679,37 @@ END`;
       const lineKey = getLineKey(op.windowId);
       const windowClip = beginWindowClip(window);
       if (op.type === "text") {
-        const lineIndex = lineIndexMap.get(lineKey) ?? 0;
-        if (lineIndex >= maxLinesForOp) {
-          endWindowClip(windowClip);
-          continue;
+        let lineIndex = lineIndexMap.get(lineKey) ?? 0;
+        const charsPerLine = window ? Math.floor(window.w / FONT_W) : Math.floor(canvas.width / FONT_W);
+        const lines = [];
+        let currentLine = "";
+        for (let i = 0; i < op.text.length; i += 1) {
+          if (currentLine.length >= charsPerLine) {
+            lines.push(currentLine);
+            currentLine = "";
+          }
+          currentLine += op.text[i];
         }
-        drawBitmapText(op.text, baseX, baseY + lineIndex * lineHeight, op.color || state.textColor || "#d8f3ff");
-        lineIndexMap.set(lineKey, lineIndex + 1);
+        if (currentLine.length > 0) {
+          lines.push(currentLine);
+        }
+        for (const line of lines) {
+          if (lineIndex >= maxLinesForOp) {
+            break;
+          }
+          drawBitmapText(line, baseX, baseY + lineIndex * lineHeight, op.color || state.textColor || "#d8f3ff", op.outlineColor);
+          lineIndex += 1;
+        }
+        lineIndexMap.set(lineKey, lineIndex);
       } else if (op.type === "textAt") {
-        drawBitmapText(op.text, baseX + op.x, baseY + op.y, op.color || state.textColor || "#d8f3ff");
+        drawBitmapText(op.text, baseX + op.x, baseY + op.y, op.color || state.textColor || "#d8f3ff", op.outlineColor);
       } else if (op.type === "textCenter") {
         const width = op.text.length * FONT_W;
         const cx = window ? window.w : canvas.width;
         const cy = window ? window.h : canvas.height;
         const x = Math.max(0, Math.floor((cx - width) / 2)) + baseX;
-        const y = Math.max(0, Math.floor((cy - FONT_H) / 2)) + baseY;
-        drawBitmapText(op.text, x, y, op.color || state.textColor || "#d8f3ff");
+        const y = op.y !== null ? op.y + baseY : Math.max(0, Math.floor((cy - FONT_H) / 2)) + baseY;
+        drawBitmapText(op.text, x, y, op.color || state.textColor || "#d8f3ff", op.outlineColor);
       } else if (op.type === "line") {
         if (state.pixelMode) {
           drawLinePixel(op.x1 + baseX, op.y1 + baseY, op.x2 + baseX, op.y2 + baseY, op.color || state.textColor || "#d8f3ff");
@@ -793,6 +815,45 @@ END`;
           ctx.closePath();
           ctx.fill();
         }
+      } else if (op.type === "screenDraw") {
+        const bank = state.banks.get(op.bankId);
+        if (bank) {
+          const imageData = ctx.createImageData(canvas.width, canvas.height);
+          const data = imageData.data;
+          for (let i = 0; i < Math.min(data.length, bank.length); i += 1) {
+            data[i] = bank[i];
+          }
+          ctx.putImageData(imageData, 0, 0);
+        }
+      } else if (op.type === "screenDrawRect") {
+        const bank = state.banks.get(op.bankId);
+        if (bank) {
+          const srcW = 320;
+          const srcH = 200;
+          const dstX = op.x + baseX;
+          const dstY = op.y + baseY;
+          const dstW = op.w;
+          const dstH = op.h;
+          
+          const imageData = ctx.createImageData(srcW, srcH);
+          const data = imageData.data;
+          for (let i = 0; i < Math.min(data.length, bank.length); i += 1) {
+            data[i] = bank[i];
+          }
+          
+          const tempCanvas = document.createElement("canvas");
+          tempCanvas.width = srcW;
+          tempCanvas.height = srcH;
+          const tempCtx = tempCanvas.getContext("2d");
+          tempCtx.putImageData(imageData, 0, 0);
+          
+          ctx.save();
+          ctx.translate(dstX + dstW / 2, dstY + dstH / 2);
+          if (op.flipH) ctx.scale(-1, 1);
+          if (op.flipV) ctx.scale(1, -1);
+          ctx.drawImage(tempCanvas, -dstW / 2, -dstH / 2, dstW, dstH);
+          ctx.restore();
+        }
       } else if (op.type === "sprite") {
         const sprite = state.sprites.get(op.name);
         if (!sprite) {
@@ -882,18 +943,41 @@ END`;
     }
   }
 
-  function drawBitmapText(text, x, y, color) {
+  function drawBitmapText(text, x, y, color, outlineColor) {
     ctx.fillStyle = color;
     for (let i = 0; i < text.length; i += 1) {
-      drawChar(text[i], x + i * FONT_W, y, color);
+      drawChar(text[i], x + i * FONT_W, y, color, outlineColor);
     }
   }
 
-  function drawChar(ch, x, y, color) {
+  function drawChar(ch, x, y, color, outlineColor) {
     const code = ch.charCodeAt(0);
     const index = (code >= 0 && code < 128) ? code : 63;
     const fontData = state.banks.get(state.fontBank) || DEFAULT_FONT_DATA;
     const base = index * 8;
+    
+    // Draw outline first if specified
+    if (outlineColor) {
+      ctx.fillStyle = outlineColor;
+      for (let row = 0; row < FONT_H; row += 1) {
+        const bits = fontData[base + row] || 0;
+        for (let col = 0; col < FONT_W; col += 1) {
+          if (bits & (1 << (7 - col))) {
+            // Draw outline pixels around each font pixel
+            for (let dx = -1; dx <= 1; dx += 1) {
+              for (let dy = -1; dy <= 1; dy += 1) {
+                if (dx !== 0 || dy !== 0) {
+                  ctx.fillRect(x + col + dx, y + row + dy, 1, 1);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Draw main character
+    ctx.fillStyle = color;
     for (let row = 0; row < FONT_H; row += 1) {
       const bits = fontData[base + row] || 0;
       for (let col = 0; col < FONT_W; col += 1) {
@@ -1097,6 +1181,9 @@ END`;
     const parts = [];
     let current = "";
     let inString = false;
+    const trimmedLine = line.trim().toUpperCase();
+    const isREM = trimmedLine.startsWith("REM") || trimmedLine.startsWith("//");
+    
     for (let i = 0; i < line.length; i += 1) {
       const ch = line[i];
       if (ch === "\"") {
@@ -1104,7 +1191,7 @@ END`;
         current += ch;
         continue;
       }
-      if (!inString && ch === ":") {
+      if (!inString && ch === ":" && !isREM) {
         parts.push(current);
         current = "";
         continue;
@@ -1700,7 +1787,8 @@ END`;
       pushDisplayOp({
         type: "text",
         text: args.map((val) => String(val)).join(" "),
-        color: state.textColor
+        color: state.textColor,
+        outlineColor: state.textOutlineColor
       });
       return null;
     },
@@ -1710,16 +1798,22 @@ END`;
         x: Number(x),
         y: Number(y),
         text: String(text),
-        color: color ? String(color) : state.textColor
+        color: color ? String(color) : state.textColor,
+        outlineColor: state.textOutlineColor
       });
       return null;
     },
-    TEXTCENTER: (text, color) => {
-      pushDisplayOp({ type: "textCenter", text: String(text), color: color ? String(color) : state.textColor });
+    TEXTCENTER: (text, y, color) => {
+      const yPos = y !== undefined ? Number(y) : null;
+      pushDisplayOp({ type: "textCenter", text: String(text), y: yPos, color: color ? String(color) : state.textColor, outlineColor: state.textOutlineColor });
       return null;
     },
     SETTEXTCOLOR: (color) => {
       state.textColor = String(color ?? "#d8f3ff");
+      return null;
+    },
+    SETTEXTOUTLINE: (color) => {
+      state.textOutlineColor = color ? String(color) : null;
       return null;
     },
     SETPENCOLOR: (color) => {
@@ -1895,17 +1989,27 @@ END`;
     INT: (value) => {
       return Math.floor(Number(value));
     },
+    HEX: (value) => {
+      const num = Math.floor(Number(value)) & 0xFF;
+      return num.toString(16).padStart(2, "0").toUpperCase();
+    },
+    COS: (radians) => {
+      return Math.cos(Number(radians));
+    },
+    SIN: (radians) => {
+      return Math.sin(Number(radians));
+    },
     BANKCREATE: (bankId, size) => {
-      const id = Number(bankId);
+      const id = String(bankId);
       const len = Number(size);
-      if (!Number.isFinite(id) || !Number.isFinite(len) || len < 0) {
-        throw new Error("BANKCREATE requires numeric id and size");
+      if (!Number.isFinite(len) || len < 0) {
+        throw new Error("BANKCREATE requires size >= 0");
       }
       state.banks.set(id, new Uint8Array(Math.floor(len)));
       return null;
     },
     BANKPEEK: (bankId, index) => {
-      const id = Number(bankId);
+      const id = String(bankId);
       const idx = Number(index);
       const bank = state.banks.get(id);
       if (!bank) {
@@ -1917,7 +2021,7 @@ END`;
       return bank[Math.floor(idx)];
     },
     BANKPOKE: (bankId, index, value) => {
-      const id = Number(bankId);
+      const id = String(bankId);
       const idx = Number(index);
       const val = Number(value);
       const bank = state.banks.get(id);
@@ -1928,6 +2032,40 @@ END`;
         return null;
       }
       bank[Math.floor(idx)] = Math.max(0, Math.min(255, Math.floor(val)));
+      return null;
+    },
+    SCREENCAPTURE: (bankId) => {
+      const id = String(bankId);
+      const bank = state.banks.get(id);
+      if (!bank) {
+        throw new Error(`SCREENCAPTURE bank not found: ${id}`);
+      }
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      if (data.length > bank.length) {
+        throw new Error(`SCREENCAPTURE bank too small (need ${data.length}, have ${bank.length})`);
+      }
+      for (let i = 0; i < data.length; i += 1) {
+        bank[i] = data[i];
+      }
+      return null;
+    },
+    SCREENDRAW: (bankId) => {
+      const id = String(bankId);
+      const bank = state.banks.get(id);
+      if (!bank) {
+        throw new Error(`SCREENDRAW bank not found: ${id}`);
+      }
+      pushDisplayOp({ type: "screenDraw", bankId: id });
+      return null;
+    },
+    SCREENDRAWRECT: (bankId, x, y, w, h, flipH, flipV) => {
+      const id = String(bankId);
+      const bank = state.banks.get(id);
+      if (!bank) {
+        throw new Error(`SCREENDRAWRECT bank not found: ${id}`);
+      }
+      pushDisplayOp({ type: "screenDrawRect", bankId: id, x: Number(x), y: Number(y), w: Number(w), h: Number(h), flipH: flipH ? 1 : 0, flipV: flipV ? 1 : 0 });
       return null;
     },
     SOUND: (wave, note, seconds) => {
@@ -2424,6 +2562,12 @@ END`;
   };
 
   async function runProgram() {
+    // Stop any running program first
+    if (state.running) {
+      state.running = false;
+      return;
+    }
+
     clearOutput();
     clearScreen();
     resetState();

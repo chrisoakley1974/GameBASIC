@@ -3,196 +3,611 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GameBASIC Help</title>
+  <title>GameBASIC Reference</title>
   <style>
     :root { color-scheme: light dark; }
     body {
       margin: 24px;
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      line-height: 1.5;
+      line-height: 1.6;
       max-width: 980px;
     }
     code, pre { font-family: "Cascadia Mono", "Consolas", monospace; }
     pre { background: rgba(127,127,127,0.12); padding: 12px; border-radius: 8px; overflow: auto; }
-    h1, h2 { margin: 0 0 12px; }
-    h2 { margin-top: 28px; }
-    .grid { display: grid; gap: 12px; }
+    h1, h2, h3 { margin: 24px 0 12px; }
+    h2 { border-bottom: 2px solid rgba(127,127,127,0.3); padding-bottom: 8px; }
+    .cmd { background: rgba(0,120,200,0.1); padding: 8px 12px; border-left: 3px solid #0078d4; margin: 12px 0; }
+    .param { color: #666; font-style: italic; }
+    .example { background: rgba(0,180,0,0.08); padding: 8px 12px; border-left: 3px solid #0ba043; margin: 8px 0; }
   </style>
 </head>
 <body>
-  <h1>GameBASIC Help</h1>
-  <p>User reference manual for GameBASIC statements, functions, and common usage patterns.</p>
+  <h1>GameBASIC Reference</h1>
+  <h1>GameBASIC Reference</h1>
+  <p>Complete command and function reference for GameBASIC.</p>
 
   <h2>Overview</h2>
   <ul>
-    <li>Programs are BASIC-style lines; line numbers are optional.</li>
-    <li>Screen coordinates are pixel-based: x=0..319, y=0..199.</li>
-    <li>If a window is active, drawing/text coordinates are relative to that window's top-left.</li>
-    <li>Colors use CSS strings (e.g., "#ffcc00" or "rgb(0,128,255)").</li>
-    <li>Most drawing/text is rendered when you call FLIP().</li>
+    <li><strong>Canvas:</strong> 320×200 pixels</li>
+    <li><strong>Coordinates:</strong> (0,0) is top-left; x=0..319, y=0..199</li>
+    <li><strong>Colors:</strong> CSS strings like "#ffcc00", "rgb(255,0,0)", or "red"</li>
+    <li><strong>Rendering:</strong> Most drawing queues until you call FLIP()</li>
+    <li><strong>Default PIXELMODE:</strong> 1 (pixel-perfect)</li>
   </ul>
 
-  <h2>Comments</h2>
-  <p>Use any of the following to comment code.</p>
-  <pre>REM This is a comment
-// This is also a comment
-/* Block comment */</pre>
+  <h2>Statements</h2>
 
-  <h2>Statements (Syntax and Parameters)</h2>
-  <ul>
-    <li><strong>REM comment</strong> — ignore the rest of the line.</li>
-    <li><strong>LET name = expression</strong> — assign a value to a variable.</li>
-    <li><strong>name = expression</strong> — shorthand assignment.</li>
-    <li><strong>DIM name(size)</strong> — create a one-dimensional array from 0..size.</li>
-    <li><strong>DATA value, value, ...</strong> — define data entries.</li>
-    <li><strong>READ var, var, ...</strong> — read sequential DATA into variables.</li>
-    <li><strong>RESTORE [id]</strong> — reset DATA pointer (optional id label).</li>
-    <li><strong>IF condition THEN ... ENDIF</strong> — conditional block.</li>
-    <li><strong>ELSEIF condition THEN</strong> — additional IF branches.</li>
-    <li><strong>ELSE</strong> — final IF branch.</li>
-    <li><strong>FOR var = start TO end STEP step</strong> — counted loop.</li>
-    <li><strong>NEXT var</strong> — ends FOR loop.</li>
-    <li><strong>WHILE condition</strong> — loop while true.</li>
-    <li><strong>ENDWHILE</strong> — ends WHILE loop.</li>
-    <li><strong>RETURN [expression]</strong> — return from a user function.</li>
-    <li><strong>END</strong> — stop program execution.</li>
-  </ul>
+  <div class="cmd">
+    <strong>REM comment</strong>
+    <p>Single-line comment. Ignored during execution.</p>
+    <div class="example"><pre>REM This is a comment
+// Double-slash also works</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>LET name = expr</strong> or <strong>name = expr</strong>
+    <p><span class="param">name:</span> Variable name | <span class="param">expr:</span> Any expression</p>
+    <p>Assign a value to a variable.</p>
+    <div class="example"><pre>LET X = 100
+Y = 50
+COUNT = COUNT + 1</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>DIM name(size)</strong>
+    <p><span class="param">name:</span> Array name | <span class="param">size:</span> Maximum index (0-indexed)</p>
+    <p>Create a one-dimensional array.</p>
+    <div class="example"><pre>DIM SCORES(100)
+SCORES(0) = 1000
+PRINT(SCORES(0))</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>DATA value, value, ...</strong>
+    <p>Define data entries. Use READ to retrieve them sequentially.</p>
+    <div class="example"><pre>DATA 10, 20, 30, 40
+READ A, B
+PRINT(A, B)  REM Outputs: 10 20</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>READ var, var, ...</strong>
+    <p>Read next values from DATA into variables.</p>
+    <div class="example"><pre>DATA 100, 200
+READ X, Y
+PRINT(X, Y)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>RESTORE [id]</strong>
+    <p><span class="param">id:</span> Optional DATA label</p>
+    <p>Reset DATA pointer to start (or specific label).</p>
+    <div class="example"><pre>DATA VALUES, 1, 2, 3
+RESTORE VALUES
+READ A, B, C</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>IF condition THEN ... ENDIF</strong>
+    <p>Conditional block. ELSEIF and ELSE are optional.</p>
+    <div class="example"><pre>IF X > 100 THEN
+  PRINT("HIGH")
+ELSEIF X > 50 THEN
+  PRINT("MEDIUM")
+ELSE
+  PRINT("LOW")
+ENDIF</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>FOR var = start TO end [STEP step]</strong>
+    <p><span class="param">var:</span> Loop variable | <span class="param">start, end:</span> Range | <span class="param">step:</span> Increment (default 1)</p>
+    <p>Counted loop. End with NEXT var.</p>
+    <div class="example"><pre>FOR I = 0 TO 10
+  PRINT(I)
+NEXT
+
+FOR J = 10 TO 0 STEP -1
+  PRINT(J)
+NEXT</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>WHILE condition ... ENDWHILE</strong>
+    <p>Loop while condition is true.</p>
+    <div class="example"><pre>X = 0
+WHILE X < 100
+  X = X + 1
+ENDWHILE</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>FUNC name(param1, param2, ...) ... END</strong>
+    <p>Define a user function. Call with FUNC name(args).</p>
+    <div class="example"><pre>FUNC ADD(A, B)
+  RETURN A + B
+END
+
+RESULT = ADD(5, 3)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>RETURN [expr]</strong>
+    <p>Return from function with optional value.</p>
+  </div>
+
+  <div class="cmd">
+    <strong>END</strong>
+    <p>Stop program execution immediately.</p>
+  </div>
 
   <h2>Text Output</h2>
-  <ul>
-    <li><strong>PRINT(value, ...)</strong> — prints a line at the top-left, values separated by spaces.</li>
-    <li><strong>TEXT(x, y, text, [color])</strong> — draw text at pixel (x, y).</li>
-    <li><strong>TEXTCENTER(text, [color])</strong> — draw text centered on screen.</li>
-    <li><strong>SETTEXTCOLOR(color)</strong> — set default text/draw color.</li>
-    <li><strong>SETPENCOLOR(color)</strong> — alias for SETTEXTCOLOR.</li>
-  </ul>
-  <pre>PRINT("HELLO", 123)
-SETTEXTCOLOR("#ffcc00")
-TEXT(10, 20, "HUD")
-TEXTCENTER("TITLE", "#8be9fd")</pre>
 
-  <h2>Input & Control</h2>
-  <ul>
-    <li><strong>INPUT([prompt], [cursor])</strong> — shows prompt, returns typed value; cursor is a single character.</li>
-    <li><strong>WAIT(seconds)</strong> — pause for a number of seconds (can be fractional).</li>
-    <li><strong>SETFPS(fps)</strong> — set the target frame rate used by FLIP (default 60).</li>
-    <li><strong>KEYDOWN(code)</strong> — returns 1 if key is held (e.g., "Space", "ArrowLeft").</li>
-    <li><strong>LASTKEY()</strong> — last key pressed (character or key code).</li>
-  </ul>
-  <pre>LET NAME = INPUT("Your name?")
-LET AGE = INPUT("Age:", "^")
-WAIT(0.5)
-IF KEYDOWN("Space") THEN PRINT("FIRE") ENDIF</pre>
+  <div class="cmd">
+    <strong>PRINT(value, value, ...)</strong>
+    <p><span class="param">value:</span> Any expression or string</p>
+    <p>Print values to screen output (wraps long text). Multiple values separated by spaces.</p>
+    <div class="example"><pre>PRINT("Score:", 1000)
+PRINT("Multiple values", "with", "spaces")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>TEXT(x, y, text, [color])</strong>
+    <p><span class="param">x, y:</span> Pixel coordinates | <span class="param">text:</span> String to draw | <span class="param">color:</span> Optional CSS color</p>
+    <p>Draw text at a specific position.</p>
+    <div class="example"><pre>TEXT(10, 20, "Hello World", "#ffff00")
+TEXT(50, 100, "Default color")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>TEXTCENTER(text, [y], [color])</strong>
+    <p><span class="param">text:</span> String to draw | <span class="param">y:</span> Optional Y position (default: centered vertically) | <span class="param">color:</span> Optional CSS color</p>
+    <p>Draw text centered horizontally.</p>
+    <div class="example"><pre>TEXTCENTER("TITLE")
+TEXTCENTER("Score: 1000", 50, "#00ff00")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETTEXTCOLOR(color)</strong>
+    <p><span class="param">color:</span> CSS color string</p>
+    <p>Set the default text and drawing color.</p>
+    <div class="example"><pre>SETTEXTCOLOR("#ffcc00")
+PRINT("This is golden")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETTEXTOUTLINE(color)</strong>
+    <p><span class="param">color:</span> CSS color string, or null/empty to disable</p>
+    <p>Add an outline/stroke around text for better visibility.</p>
+    <div class="example"><pre>SETTEXTCOLOR("#ffffff")
+SETTEXTOUTLINE("#000000")
+TEXT(10, 10, "Outlined text")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETPENCOLOR(color)</strong>
+    <p>Alias for SETTEXTCOLOR().</p>
+  </div>
 
   <h2>Screen Control</h2>
-  <ul>
-    <li><strong>CLS()</strong> — clear text output lines.</li>
-    <li><strong>CLEARSCREEN()</strong> — clear all display operations.</li>
-    <li><strong>BORDER(color)</strong> — set outer border color.</li>
-    <li><strong>SCREENBG(color)</strong> — set background for the whole screen, or the active window if one is selected.</li>
-    <li><strong>FLIP()</strong> — render all queued draw operations.</li>
-  </ul>
 
-  <h2>Window Areas (Clipping)</h2>
-  <p>Define rectangular drawing regions and switch between them. Any draw operation is clipped to the active window.</p>
-  <p>When a window is active, all drawing/text coordinates are relative to the window.</p>
-  <ul>
-    <li><strong>WINDOW(id, x, y, w, h, [radius])</strong> — define a window rectangle with optional rounded corners.</li>
-    <li><strong>USEWINDOW(id)</strong> — make a window active for subsequent drawing.</li>
-    <li><strong>NOWINDOW()</strong> — disable window clipping (draw to full screen).</li>
-    <li><strong>WINDOWX()</strong>, <strong>WINDOWY()</strong>, <strong>WINDOWW()</strong>, <strong>WINDOWH()</strong> — get active window bounds.</li>
-    <li><strong>WINDOWR()</strong>, <strong>WINDOWB()</strong> — right and bottom edges of the active window.</li>
-  </ul>
-  <pre>WINDOW("HUD", 0, 0, 320, 32)
-WINDOW("PLAY", 0, 32, 320, 168)
-USEWINDOW("HUD")
-TEXT(4, 4, "SCORE: 0000")
-USEWINDOW("PLAY")
-FELLIPSE(160, 120, 10, 10)
-NOWINDOW()</pre>
+  <div class="cmd">
+    <strong>CLEARSCREEN()</strong>
+    <p>Clear all draw operations and reset display.</p>
+    <div class="example"><pre>CLEARSCREEN()
+PRINT("Fresh start")</pre></div>
+  </div>
 
-  <h2>Pixel Mode</h2>
-  <ul>
-    <li><strong>PIXELMODE(mode)</strong> — 1 = pixel-perfect shapes, 0 = smooth shapes.</li>
-  </ul>
-  <pre>PIXELMODE(1)
-FELLIPSE(120, 60, 12, 12)
-PIXELMODE(0)</pre>
+  <div class="cmd">
+    <strong>CLS()</strong>
+    <p>Clear text output lines only.</p>
+  </div>
 
-  <h2>Shapes</h2>
-  <p>Coordinates are pixel-based; optional color overrides current text color.</p>
-  <ul>
-    <li><strong>LINE(x1, y1, x2, y2, [color])</strong> — start and end points.</li>
-    <li><strong>RECT(x, y, w, h, [color])</strong> — top-left corner, width, height.</li>
-    <li><strong>FRECT(x, y, w, h, [color])</strong> — filled rectangle.</li>
-    <li><strong>ELLIPSE(cx, cy, rx, ry, [color])</strong> — center and radii.</li>
-    <li><strong>FELLIPSE(cx, cy, rx, ry, [color])</strong> — filled ellipse.</li>
-    <li><strong>ARC(cx, cy, r, startDeg, endDeg, [color])</strong> — center, radius, start/end in degrees.</li>
-    <li><strong>FARC(cx, cy, r, startDeg, endDeg, [color])</strong> — filled arc (pie slice).</li>
-    <li><strong>POLY(x1, y1, x2, y2, ... , [color])</strong> — outline polygon points.</li>
-    <li><strong>FPOLY(x1, y1, x2, y2, ... , [color])</strong> — filled polygon points.</li>
-  </ul>
+  <div class="cmd">
+    <strong>FLIP()</strong>
+    <p>Render all queued drawing operations to the screen. Typically called once per frame.</p>
+    <div class="example"><pre>FOR I = 1 TO 10
+  CLEARSCREEN()
+  PRINT("Frame", I)
+  FLIP()
+  WAIT(0.1)
+NEXT</pre></div>
+  </div>
 
-  <h2>Sprite Basics</h2>
-  <ul>
-    <li><strong>SPRITE(name, w, h, color)</strong> — create a solid-color sprite.</li>
-    <li><strong>SPRITE(name, imageUrl)</strong> — create a sprite from an image URL.</li>
-    <li><strong>DRAWSPRITE(name, x, y)</strong> — draw sprite at (x, y).</li>
-    <li><strong>MOVESPRITE(name, x, y)</strong> — set sprite position (same as draw, kept for compatibility).</li>
-    <li><strong>SPRITEX(name)</strong> / <strong>SPRITEY(name)</strong> — current sprite position.</li>
-  </ul>
+  <div class="cmd">
+    <strong>SCREENBG(color)</strong>
+    <p><span class="param">color:</span> CSS color string</p>
+    <p>Set background color for the screen (or active window).</p>
+    <div class="example"><pre>SCREENBG("#1a1a2e")
+FLIP()</pre></div>
+  </div>
 
-  <h2>Sprite Banks & Animation</h2>
-  <ul>
-    <li><strong>BANKLOADSPRITE(id, dataUrl, frameW, frameH)</strong> — load a sprite sheet as a bank.</li>
-    <li><strong>SPRITEBANK(name, bankId, frameIndex)</strong> — create sprite using a bank.</li>
-    <li><strong>SETSPRITEFRAME(name, frameIndex)</strong> — choose frame from a bank.</li>
-    <li><strong>SETSPRITETRANSFORM(name, scaleX, scaleY, rotationDeg, flipX, flipY)</strong> — transform sprite.</li>
-    <li><strong>SETHOTSPOT(name, hotX, hotY)</strong> — set sprite origin for rotation/positioning.</li>
-  </ul>
+  <div class="cmd">
+    <strong>BORDER(color)</strong>
+    <p><span class="param">color:</span> CSS color string</p>
+    <p>Set the border color outside the 320×200 canvas.</p>
+    <div class="example"><pre>BORDER("#ff0000")</pre></div>
+  </div>
 
-  <h2>Sprite Properties</h2>
-  <ul>
-    <li><strong>SPRITEFRAME(name)</strong> — get current frame index.</li>
-    <li><strong>SPRITESCALEX(name)</strong> / <strong>SPRITESCALEY(name)</strong> — get scale.</li>
-    <li><strong>SPRITEROT(name)</strong> — get rotation in degrees.</li>
-  </ul>
+  <div class="cmd">
+    <strong>SETFPS(fps)</strong>
+    <p><span class="param">fps:</span> Frames per second (numeric)</p>
+    <p>Set target frame rate.</p>
+    <div class="example"><pre>SETFPS(30)  REM 30 FPS
+WHILE 1
+  FLIP()
+ENDWHILE</pre></div>
+  </div>
 
-  <h2>Collision</h2>
-  <ul>
-    <li><strong>COLLIDES(nameA, ax, ay, nameB, bx, by)</strong> — AABB collision between two sprites.</li>
-    <li><strong>RECTHIT(x1, y1, w1, h1, x2, y2, w2, h2)</strong> — overlap of two rectangles.</li>
-    <li><strong>ELLIPSEHIT(cx, cy, rx, ry, px, py)</strong> — point-in-ellipse test.</li>
-  </ul>
+  <div class="cmd">
+    <strong>PIXELMODE(mode)</strong>
+    <p><span class="param">mode:</span> 1 = pixel-perfect, 0 = smooth</p>
+    <p>Set rendering mode for shapes. Default is 1.</p>
+    <div class="example"><pre>PIXELMODE(1)
+FELLIPSE(160, 100, 50, 30)</pre></div>
+  </div>
+
+  <h2>Windows (Clipping Regions)</h2>
+  <p>Windows define rectangular drawing areas. All drawing within a window is clipped to its bounds.</p>
+
+  <div class="cmd">
+    <strong>WINDOW(id, x, y, w, h, [radius])</strong>
+    <p><span class="param">id:</span> Window identifier | <span class="param">x, y, w, h:</span> Rectangle bounds | <span class="param">radius:</span> Optional corner radius</p>
+    <p>Define a new window.</p>
+    <div class="example"><pre>WINDOW("HUD", 0, 0, 320, 30)
+WINDOW("GAME", 0, 30, 320, 170, 4)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>USEWINDOW(id)</strong>
+    <p><span class="param">id:</span> Window identifier</p>
+    <p>Activate a window for drawing.</p>
+    <div class="example"><pre>USEWINDOW("HUD")
+TEXT(5, 5, "Score: 1000")
+USEWINDOW("GAME")
+LINE(10, 10, 100, 100)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>NOWINDOW()</strong>
+    <p>Disable window clipping (draw to full screen).</p>
+  </div>
+
+  <div class="cmd">
+    <strong>WINDOWX(), WINDOWY(), WINDOWW(), WINDOWH()</strong>
+    <p>Get active window bounds (x, y, width, height).</p>
+    <div class="example"><pre>W = WINDOWW()
+H = WINDOWH()
+PRINT("Window size:", W, "x", H)</pre></div>
+  </div>
+
+  <h2>Shapes & Drawing</h2>
+
+  <div class="cmd">
+    <strong>LINE(x1, y1, x2, y2, [color])</strong>
+    <p><span class="param">x1, y1, x2, y2:</span> Start and end points | <span class="param">color:</span> Optional CSS color</p>
+    <p>Draw a line between two points.</p>
+    <div class="example"><pre>LINE(10, 10, 100, 100, "#ff0000")
+LINE(50, 50, 200, 50)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>RECT(x, y, w, h, [color])</strong>
+    <p><span class="param">x, y:</span> Top-left corner | <span class="param">w, h:</span> Width and height | <span class="param">color:</span> Optional CSS color</p>
+    <p>Draw a rectangle outline.</p>
+    <div class="example"><pre>RECT(10, 10, 100, 50, "#00ff00")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>FRECT(x, y, w, h, [color])</strong>
+    <p>Draw a filled rectangle.</p>
+    <div class="example"><pre>FRECT(50, 50, 50, 50, "#ffff00")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>ELLIPSE(cx, cy, rx, ry, [color])</strong>
+    <p><span class="param">cx, cy:</span> Center | <span class="param">rx, ry:</span> Horizontal and vertical radii | <span class="param">color:</span> Optional CSS color</p>
+    <p>Draw an ellipse outline.</p>
+    <div class="example"><pre>ELLIPSE(160, 100, 80, 50, "#0088ff")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>FELLIPSE(cx, cy, rx, ry, [color])</strong>
+    <p>Draw a filled ellipse.</p>
+    <div class="example"><pre>FELLIPSE(160, 100, 50, 30, "#ff00ff")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>ARC(cx, cy, r, startDeg, endDeg, [color])</strong>
+    <p><span class="param">cx, cy:</span> Center | <span class="param">r:</span> Radius | <span class="param">startDeg, endDeg:</span> Angles in degrees</p>
+    <p>Draw an arc outline.</p>
+    <div class="example"><pre>ARC(160, 100, 50, 0, 180, "#ffaa00")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>FARC(cx, cy, r, startDeg, endDeg, [color])</strong>
+    <p>Draw a filled arc (pie slice).</p>
+  </div>
+
+  <div class="cmd">
+    <strong>POLY(x1, y1, x2, y2, ..., [color])</strong>
+    <p><span class="param">x1, y1, x2, y2, ...:</span> Polygon vertices</p>
+    <p>Draw a polygon outline.</p>
+    <div class="example"><pre>POLY(100, 50, 150, 100, 50, 100, "#00aa00")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>FPOLY(x1, y1, x2, y2, ..., [color])</strong>
+    <p>Draw a filled polygon.</p>
+  </div>
+
+  <h2>Sprites</h2>
+
+  <div class="cmd">
+    <strong>SPRITE(name, w, h, color)</strong>
+    <p><span class="param">name:</span> Sprite identifier | <span class="param">w, h:</span> Width and height | <span class="param">color:</span> CSS color</p>
+    <p>Create a solid-color sprite.</p>
+    <div class="example"><pre>SPRITE("PLAYER", 16, 16, "#ff0000")
+SPRITE("ENEMY", 8, 8, "#00ff00")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SPRITE(name, imageUrl)</strong>
+    <p>Create a sprite from an image URL.</p>
+    <div class="example"><pre>SPRITE("HERO", "https://example.com/hero.png")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>DRAWSPRITE(name, x, y)</strong>
+    <p><span class="param">name:</span> Sprite identifier | <span class="param">x, y:</span> Draw position</p>
+    <p>Draw sprite at the specified position.</p>
+    <div class="example"><pre>DRAWSPRITE("PLAYER", 100, 100)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>MOVESPRITE(name, x, y)</strong>
+    <p>Set sprite position (compatibility alias for DRAWSPRITE).</p>
+  </div>
+
+  <div class="cmd">
+    <strong>SPRITEX(name), SPRITEY(name)</strong>
+    <p>Get current sprite position (x or y).</p>
+    <div class="example"><pre>X = SPRITEX("PLAYER")
+Y = SPRITEY("PLAYER")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETSPRITEFRAME(name, frameIndex)</strong>
+    <p><span class="param">frameIndex:</span> Frame number (0-indexed)</p>
+    <p>Change the current frame of a sprite bank.</p>
+    <div class="example"><pre>SETSPRITEFRAME("WALK", 0)
+WAIT(0.1)
+SETSPRITEFRAME("WALK", 1)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SPRITEBANK(name, bankId, frameIndex)</strong>
+    <p><span class="param">name:</span> Sprite identifier | <span class="param">bankId:</span> Bank with sprite sheet | <span class="param">frameIndex:</span> Starting frame</p>
+    <p>Create a sprite from a sprite bank.</p>
+  </div>
+
+  <div class="cmd">
+    <strong>SETSPRITETRANSFORM(name, scaleX, scaleY, rotationDeg, flipX, flipY)</strong>
+    <p><span class="param">scaleX, scaleY:</span> Scale factors | <span class="param">rotationDeg:</span> Rotation in degrees | <span class="param">flipX, flipY:</span> Flip flags (0 or 1)</p>
+    <p>Transform a sprite.</p>
+    <div class="example"><pre>SETSPRITETRANSFORM("PLAYER", 2, 2, 45, 0, 0)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SETHOTSPOT(name, hotX, hotY)</strong>
+    <p><span class="param">hotX, hotY:</span> Offset from sprite origin</p>
+    <p>Set the sprite rotation/positioning origin point.</p>
+  </div>
+
+  <h2>Collision Detection</h2>
+
+  <div class="cmd">
+    <strong>COLLIDES(nameA, ax, ay, nameB, bx, by)</strong>
+    <p><span class="param">nameA, nameB:</span> Sprite names | <span class="param">ax, ay, bx, by:</span> Positions</p>
+    <p>Check AABB collision between two sprites. Returns 1 if colliding, 0 otherwise.</p>
+    <div class="example"><pre>IF COLLIDES("PLAYER", PX, PY, "ENEMY", EX, EY) THEN
+  PRINT("HIT!")
+ENDIF</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>RECTHIT(x1, y1, w1, h1, x2, y2, w2, h2)</strong>
+    <p>Check if two rectangles overlap.</p>
+    <div class="example"><pre>IF RECTHIT(10, 10, 50, 50, 40, 40, 50, 50) THEN
+  PRINT("Rectangles overlap")
+ENDIF</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>ELLIPSEHIT(cx, cy, rx, ry, px, py)</strong>
+    <p><span class="param">cx, cy, rx, ry:</span> Ellipse center and radii | <span class="param">px, py:</span> Point to test</p>
+    <p>Check if a point is inside an ellipse.</p>
+  </div>
 
   <h2>Banks & Memory</h2>
-  <ul>
-    <li><strong>BANKCREATE(id, size)</strong> — create a byte bank of length size.</li>
-    <li><strong>BANKLOAD(id, data)</strong> — load bank data from hex/base64 string.</li>
-    <li><strong>BANKFREE(id)</strong> — delete a bank.</li>
-    <li><strong>BANKCOPY(srcId, dstId)</strong> — copy a bank.</li>
-    <li><strong>BANKPEEK(id, index)</strong> — read a byte (0..255).</li>
-    <li><strong>BANKPOKE(id, index, value)</strong> — write a byte (0..255).</li>
-  </ul>
 
-  <h2>Font</h2>
-  <ul>
-    <li><strong>SETFONT(bankId)</strong> — use a bank as a 128x8 font (1024 bytes).</li>
-  </ul>
+  <div class="cmd">
+    <strong>BANKCREATE(id, size)</strong>
+    <p><span class="param">id:</span> Bank identifier (number or string) | <span class="param">size:</span> Number of bytes</p>
+    <p>Create a byte bank (Uint8Array).</p>
+    <div class="example"><pre>BANKCREATE("BUFFER", 256000)
+BANKCREATE(1, 1024)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>BANKPEEK(id, index)</strong>
+    <p><span class="param">id:</span> Bank identifier | <span class="param">index:</span> Byte offset</p>
+    <p>Read a byte from bank (0-255). Returns 0 if out of bounds.</p>
+    <div class="example"><pre>VALUE = BANKPEEK("BUFFER", 10)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>BANKPOKE(id, index, value)</strong>
+    <p><span class="param">value:</span> Byte to write (clamped to 0-255)</p>
+    <p>Write a byte to bank.</p>
+    <div class="example"><pre>BANKPOKE("BUFFER", 10, 255)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>BANKLOAD(id, data)</strong>
+    <p><span class="param">data:</span> Hex string (space-separated) or BASE64: prefix</p>
+    <p>Load pre-formatted data into a bank.</p>
+    <div class="example"><pre>BANKLOAD(1, "00 FF 1A 2B")
+BANKLOAD(2, "BASE64:AAECAwQ=")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>BANKCOPY(srcId, dstId)</strong>
+    <p>Copy one bank to another.</p>
+  </div>
+
+  <div class="cmd">
+    <strong>BANKFREE(id)</strong>
+    <p>Delete a bank and free its memory.</p>
+  </div>
+
+  <h2>Screen Capture & Playback</h2>
+
+  <div class="cmd">
+    <strong>SCREENCAPTURE(bankId)</strong>
+    <p><span class="param">bankId:</span> Bank identifier (requires 256,000 bytes for full screen)</p>
+    <p>Save the current screen to a bank (320×200 RGBA = 256,000 bytes).</p>
+    <div class="example"><pre>BANKCREATE("SCREEN", 256000)
+CLEARSCREEN()
+LINE(0, 0, 319, 199, "#ffffff")
+FLIP()
+SCREENCAPTURE("SCREEN")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SCREENDRAW(bankId)</strong>
+    <p>Restore a full screen from a bank.</p>
+    <div class="example"><pre>SCREENDRAW("SCREEN")</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>SCREENDRAWRECT(bankId, x, y, w, h, [flipH], [flipV])</strong>
+    <p><span class="param">flipH, flipV:</span> 1 to flip horizontally/vertically, 0 for normal</p>
+    <p>Draw a captured screen as a scaled rectangle, optionally flipped.</p>
+    <div class="example"><pre>SCREENDRAWRECT("SCREEN", 0, 0, 160, 100)       REM Half-size
+SCREENDRAWRECT("SCREEN", 160, 0, 160, 100, 1)  REM Flipped horizontally
+SCREENDRAWRECT("SCREEN", 0, 100, 160, 100, 0, 1)  REM Flipped vertically</pre></div>
+  </div>
+
+  <h2>Input & Control</h2>
+
+  <div class="cmd">
+    <strong>INPUT([prompt], [cursor])</strong>
+    <p><span class="param">prompt:</span> Optional message to display | <span class="param">cursor:</span> Single character to show (default "_")</p>
+    <p>Display a prompt and wait for text input. Returns the entered string.</p>
+    <div class="example"><pre>NAME = INPUT("What is your name?")
+AGE = INPUT("Age:", ">")
+PRINT("Hello,", NAME)</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>KEYDOWN(code)</strong>
+    <p><span class="param">code:</span> Key code string (e.g., "Space", "ArrowLeft", "a")</p>
+    <p>Check if a key is currently pressed. Returns 1 if down, 0 if up.</p>
+    <div class="example"><pre>IF KEYDOWN("ArrowUp") THEN Y = Y - 1 ENDIF
+IF KEYDOWN("Space") THEN PRINT("JUMP") ENDIF</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>LASTKEY()</strong>
+    <p>Get the last key that was pressed (as a string).</p>
+    <div class="example"><pre>KEY = LASTKEY()
+IF KEY = "Escape" THEN END ENDIF</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>WAIT(seconds)</strong>
+    <p><span class="param">seconds:</span> Duration to pause</p>
+    <p>Pause execution for a number of seconds (fractional).</p>
+    <div class="example"><pre>PRINT("Starting...")
+WAIT(1)
+PRINT("Done!")</pre></div>
+  </div>
 
   <h2>Math & Utilities</h2>
-  <ul>
-    <li><strong>RND([max])</strong> — random float in $[0, max)$ (default max=1).</li>
-    <li><strong>INT(value)</strong> — floor to integer.</li>
-    <li><strong>STRLEN(text)</strong> — string length.</li>
-  </ul>
+
+  <div class="cmd">
+    <strong>RND([max])</strong>
+    <p><span class="param">max:</span> Upper limit (exclusive)</p>
+    <p>Generate a random float in the range [0, max). Default max=1.</p>
+    <div class="example"><pre>X = RND(320)
+Y = RND(200)
+DICE = INT(RND(6)) + 1</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>INT(value)</strong>
+    <p>Floor to integer (truncate decimal part).</p>
+    <div class="example"><pre>A = INT(3.7)  REM Returns 3
+B = INT(-2.5)  REM Returns -3</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>HEX(value)</strong>
+    <p><span class="param">value:</span> Number 0-255</p>
+    <p>Convert a byte value to a 2-character uppercase hex string.</p>
+    <div class="example"><pre>R = 255
+G = 0
+B = 127
+COLOR = "#" & HEX(R) & HEX(G) & HEX(B)  REM "#FF007F"</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>COS(radians), SIN(radians)</strong>
+    <p>Trigonometric functions. Input in radians.</p>
+    <div class="example"><pre>X = 160 + COS(ANGLE) * 50
+Y = 100 + SIN(ANGLE) * 30
+ANGLE = ANGLE + 0.05</pre></div>
+  </div>
+
+  <div class="cmd">
+    <strong>STRLEN(text)</strong>
+    <p>Get the length of a string.</p>
+    <div class="example"><pre>LEN = STRLEN("Hello")  REM Returns 5</pre></div>
+  </div>
 
   <h2>Sound</h2>
+
+  <div class="cmd">
+    <strong>SOUND(wave, note, seconds)</strong>
+    <p><span class="param">wave:</span> 0=sine, 1=sawtooth, 2=square, 4=noise | <span class="param">note:</span> MIDI note number (0=middle C) | <span class="param">seconds:</span> Duration</p>
+    <p>Play a sound. For noise, the note parameter controls filter pitch.</p>
+    <div class="example"><pre>SOUND(0, 0, 0.2)    REM Sine wave, middle C
+SOUND(2, 12, 0.1)   REM Square wave, one octave up
+SOUND(4, 5, 0.3)    REM White noise</pre></div>
+  </div>
+
+  <h2>Font</h2>
+
+  <div class="cmd">
+    <strong>SETFONT(bankId)</strong>
+    <p><span class="param">bankId:</span> Bank containing 1024 bytes (128 chars × 8 bytes per char)</p>
+    <p>Set a custom font from a bank.</p>
+  </div>
+
+  <h2>String Concatenation</h2>
+  <p>Use the ampersand operator <strong>&</strong> to join strings:</p>
+  <pre>MESSAGE = "Score: " & SCORE & " points"
+COLOR = "#" & HEX(R) & HEX(G) & HEX(B)</pre>
+
+  <h2>Tips & Tricks</h2>
   <ul>
-    <li><strong>SOUND(wave, note, seconds)</strong> — play sound. wave: 0=sine, 1=saw, 2=square, 4=noise.</li>
+    <li>Call <strong>FLIP()</strong> at the end of each frame loop to render.</li>
+    <li>Use <strong>PIXELMODE(1)</strong> for crisp pixel-perfect shapes.</li>
+    <li>Windows are great for UI layout: create "HUD", "GAME", etc.</li>
+    <li>Banks can store screen captures, sprite data, or custom binary data.</li>
+    <li>Use <strong>SETFPS()</strong> to control frame rate and game speed.</li>
+    <li>String concatenation uses <strong>&</strong>, not <strong>+</strong> (which is numeric addition).</li>
   </ul>
-  <pre>SOUND(0, 0, 0.2)
-SOUND(2, 12, 0.1)
-SOUND(4, 10, 0.2)</pre>
 </body>
 </html>

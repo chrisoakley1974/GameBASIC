@@ -48,18 +48,42 @@
     <strong>LET name = expr</strong> or <strong>name = expr</strong>
     <p><span class="param">name:</span> Variable name | <span class="param">expr:</span> Any expression</p>
     <p>Assign a value to a variable.</p>
-    <div class="example"><pre>LET X = 100
-Y = 50
-COUNT = COUNT + 1</pre></div>
+    <p><strong>Scope rules:</strong></p>
+    <ul>
+      <li><strong>name = expr</strong> (no LET): Modifies existing variable from outer scope, or creates local if not found</li>
+      <li><strong>LET name = expr</strong>: Always creates a new local variable in current scope, shadowing any outer variable</li>
+    </ul>
+    <div class="example"><pre>X = 100 // Global variable
+
+FUNC TEST()
+  X = X + 10 // Modifies global X (now 110)
+  LET Y = 20 // Creates local Y
+END
+
+TEST()
+PRINT(X) // 110
+PRINT(Y) // Error: Y is local to TEST</pre></div>
   </div>
 
   <div class="cmd">
     <strong>DIM name(size)</strong>
     <p><span class="param">name:</span> Array name | <span class="param">size:</span> Maximum index (0-indexed)</p>
     <p>Create a one-dimensional array.</p>
-    <div class="example"><pre>DIM SCORES(100)
-SCORES(0) = 1000
-PRINT(SCORES(0))</pre></div>
+    <p><strong>Scope rules:</strong></p>
+    <ul>
+      <li><strong>DIM at global level:</strong> Creates a global array accessible everywhere</li>
+      <li><strong>DIM inside a function:</strong> Creates a local array only visible within that function</li>
+    </ul>
+    <div class="example"><pre>DIM GLOBAL(10) // Global array
+
+FUNC TEST()
+  DIM LOCAL(5) // Local to TEST
+  GLOBAL(0) = 100 // Can access global
+  LOCAL(0) = 50 // Local only
+END
+
+GLOBAL(0) = 1 // OK
+LOCAL(0) = 1 // Error: LOCAL not defined here</pre></div>
   </div>
 
   <div class="cmd">
@@ -67,7 +91,7 @@ PRINT(SCORES(0))</pre></div>
     <p>Define data entries. Use READ to retrieve them sequentially.</p>
     <div class="example"><pre>DATA 10, 20, 30, 40
 READ A, B
-PRINT(A, B)  REM Outputs: 10 20</pre></div>
+PRINT(A, B)  // Outputs: 10 20</pre></div>
   </div>
 
   <div class="cmd">
@@ -123,12 +147,23 @@ ENDWHILE</pre></div>
 
   <div class="cmd">
     <strong>FUNC name(param1, param2, ...) ... END</strong>
-    <p>Define a user function. Call with FUNC name(args).</p>
-    <div class="example"><pre>FUNC ADD(A, B)
-  RETURN A + B
+    <p>Define a user function. Call with name(args) or FUNC name(args).</p>
+    <p><strong>Variable scope in functions:</strong></p>
+    <ul>
+      <li><strong>Parameters:</strong> Always local to the function (passed by value)</li>
+      <li><strong>Assignment (X = value):</strong> Modifies outer/global variable if it exists</li>
+      <li><strong>LET (LET X = value):</strong> Creates local variable, shadows outer scope</li>
+      <li><strong>DIM:</strong> Creates local array visible only in this function</li>
+    </ul>
+    <div class="example"><pre>SCORE = 0 // Global
+
+FUNC ADDSCORE(POINTS)
+  SCORE = SCORE + POINTS // Modifies global
+  LET BONUS = POINTS * 2 // Local only
 END
 
-RESULT = ADD(5, 3)</pre></div>
+ADDSCORE(10)
+PRINT(SCORE) // 10</pre></div>
   </div>
 
   <div class="cmd">
@@ -188,8 +223,8 @@ TEXT(10, 10, "Outlined text")</pre></div>
     <strong>SETTEXTSCALE(x, y)</strong>
     <p><span class="param">x, y:</span> Scale factors (e.g., 0.5, 1, 2)</p>
     <p>Set text scaling for width and height.</p>
-    <div class="example"><pre>SETTEXTSCALE(0.5, 1)  REM 4x8 text
-SETTEXTSCALE(1, 2)    REM 8x16 text</pre></div>
+    <div class="example"><pre>SETTEXTSCALE(0.5, 1)  // 4x8 text
+SETTEXTSCALE(1, 2)    // 8x16 text</pre></div>
   </div>
 
   <div class="cmd">
@@ -257,7 +292,7 @@ FLIP()</pre></div>
     <strong>SETFPS(fps)</strong>
     <p><span class="param">fps:</span> Frames per second (numeric)</p>
     <p>Set target frame rate.</p>
-    <div class="example"><pre>SETFPS(30)  REM 30 FPS
+    <div class="example"><pre>SETFPS(30)  // 30 FPS
 WHILE 1
   FLIP()
 ENDWHILE</pre></div>
@@ -518,9 +553,9 @@ SCREENCAPTURE("SCREEN")</pre></div>
     <strong>SCREENDRAWRECT(bankId, x, y, w, h, [flipH], [flipV])</strong>
     <p><span class="param">flipH, flipV:</span> 1 to flip horizontally/vertically, 0 for normal</p>
     <p>Draw a captured screen as a scaled rectangle, optionally flipped.</p>
-    <div class="example"><pre>SCREENDRAWRECT("SCREEN", 0, 0, 160, 100)       REM Half-size
-SCREENDRAWRECT("SCREEN", 160, 0, 160, 100, 1)  REM Flipped horizontally
-SCREENDRAWRECT("SCREEN", 0, 100, 160, 100, 0, 1)  REM Flipped vertically</pre></div>
+    <div class="example"><pre>SCREENDRAWRECT("SCREEN", 0, 0, 160, 100)  // Half-size
+SCREENDRAWRECT("SCREEN", 160, 0, 160, 100, 1)  // Flipped horizontally
+SCREENDRAWRECT("SCREEN", 0, 100, 160, 100, 0, 1)  // Flipped vertically</pre></div>
   </div>
 
   <h2>Input & Control</h2>
@@ -561,6 +596,15 @@ PRINT("Done!")</pre></div>
   <h2>Math & Utilities</h2>
 
   <div class="cmd">
+    <strong>SEED(value)</strong>
+    <p><span class="param">value:</span> Number used to seed the RNG</p>
+    <p>Set a deterministic seed for RND(). If not called, RND uses the browser's RNG.</p>
+    <div class="example"><pre>SEED(1234)
+A = RND()
+B = RND(10)</pre></div>
+  </div>
+
+  <div class="cmd">
     <strong>RND([max])</strong>
     <p><span class="param">max:</span> Upper limit (exclusive)</p>
     <p>Generate a random float in the range [0, max). Default max=1.</p>
@@ -572,8 +616,8 @@ DICE = INT(RND(6)) + 1</pre></div>
   <div class="cmd">
     <strong>INT(value)</strong>
     <p>Floor to integer (truncate decimal part).</p>
-    <div class="example"><pre>A = INT(3.7)  REM Returns 3
-B = INT(-2.5)  REM Returns -3</pre></div>
+    <div class="example"><pre>A = INT(3.7)  // Returns 3
+B = INT(-2.5)  // Returns -3</pre></div>
   </div>
 
   <div class="cmd">
@@ -583,7 +627,7 @@ B = INT(-2.5)  REM Returns -3</pre></div>
     <div class="example"><pre>R = 255
 G = 0
 B = 127
-COLOR = "#" & HEX(R) & HEX(G) & HEX(B)  REM "#FF007F"</pre></div>
+COLOR = "#" & HEX(R) & HEX(G) & HEX(B)  // "#FF007F"</pre></div>
   </div>
 
   <div class="cmd">
@@ -597,7 +641,7 @@ ANGLE = ANGLE + 0.05</pre></div>
   <div class="cmd">
     <strong>STRLEN(text)</strong>
     <p>Get the length of a string.</p>
-    <div class="example"><pre>LEN = STRLEN("Hello")  REM Returns 5</pre></div>
+    <div class="example"><pre>LEN = STRLEN("Hello")  // Returns 5</pre></div>
   </div>
 
   <h2>Sound</h2>
@@ -606,9 +650,9 @@ ANGLE = ANGLE + 0.05</pre></div>
     <strong>SOUND(wave, note, seconds)</strong>
     <p><span class="param">wave:</span> 0=sine, 1=sawtooth, 2=square, 4=noise | <span class="param">note:</span> MIDI note number (0=middle C) | <span class="param">seconds:</span> Duration</p>
     <p>Play a sound. For noise, the note parameter controls filter pitch.</p>
-    <div class="example"><pre>SOUND(0, 0, 0.2)    REM Sine wave, middle C
-SOUND(2, 12, 0.1)   REM Square wave, one octave up
-SOUND(4, 5, 0.3)    REM White noise</pre></div>
+    <div class="example"><pre>SOUND(0, 0, 0.2)    // Sine wave, middle C
+SOUND(2, 12, 0.1)   // Square wave, one octave up
+SOUND(4, 5, 0.3)    // White noise</pre></div>
   </div>
 
   <h2>Font</h2>

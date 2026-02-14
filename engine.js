@@ -131,104 +131,206 @@
     0x18,0x18,0x18,0x00,0x18,0x18,0x18,0x00, 0x70,0x18,0x18,0x0E,0x18,0x18,0x70,0x00,
     0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x10,0x38,0x6C,0xC6,0xC6,0xFE,0x00
   ]);
-  const sample = `REM 3D Spinning Cube Demo
+  const sample = `REM Endless runner demo (paste your sprite data URL below)
+CLS()
+CLEARSCREEN()
 
-SETFPS(30)
-PIXELMODE(1)
+LET SPRDATA = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABoElEQVR4AbySW27kQAwDN3v/OyepjwIImXI7k4cBgWqRbNGe+f9ved7Hs8jW8bC/b8I1wGb46XkNQPq5qM2mxnPTthn6GuDt84GkPtu3RPpT6UFnLzLLqgFSYHIxuSe9PnF6jgE0bG8gf8LNvwZIQ/anRfLpyV5eXAPkJ8te4wnTk/301QDN0GbzMs9q882dqRFrAMm/wEuALSlh7jj4V+oS4JVLNg+B82douksADNQUM6PmvJ1TRwg0OeNsXQJIiJtRfsP0ZT/1NUCmthfnBd891wBeytJMz1nuK3jnqwHaUmbU08V3S/OOGiAFv93XAC19m23hmrbN8NcA+antRUynSq29OL01QIpMLib3pNcnTs8xgIbtDeRPuPnXAGnI/rRIPj3Zy4trgPxk2Ws8YXqyn74aoBnabF7muWnbDH0NAPFqbYu4r3GXAE2EmbrjnvBNcwmA6LvV/nRtxp5LAIQUZBYzKmezh6fmnDNfD47ibF0CSIjT4PwOWSY//cmhqQEUYbYXMd2VOrwUWlGOmVUDSGLQzIwz+KTUTm3eB/cBAAD//yQAxxwAAAAGSURBVAMApo0UJCUiluAAAAAASUVORK5CYII="
+BANKLOADSPRITE(1, SPRDATA, 16, 16)
+SPRITEBANK("RUNNER", 1, 0)
+SETHOTSPOT("RUNNER", 8, 24)
+SETSPRITETRANSFORM("RUNNER", 2, 2, 0, 0, 0)
 
-REM Cube vertices - 8 corners doubled size
-DATA VERTS, -60,-60,-60, 60,-60,-60, 60,60,-60, -60,60,-60, -60,-60,60, 60,-60,60, 60,60,60, -60,60,60
+LET GROUND = 160
+LET PLAYERX = 60
+LET PLAYERY = GROUND
+LET VY = 0
+LET GRAV = 0.7
+LET JUMP = -10
+LET BASESPEED = 3.2
+LET FRAME = 0
+LET SCORE = 0
+LET DEAD = 0
+LET STARTED = 0
+LET HELD = 0
+LET READY = 0
+LET NEEDRESET = 1
+LET T = 0
+LET SNDT = 0
 
-REM Cube edges - 12 total
-DATA EDGES, 0,1, 1,2, 2,3, 3,0, 4,5, 5,6, 6,7, 7,4, 0,4, 1,5, 2,6, 3,7
+LET OBST = 9
+LET OHFIX = 24
+LET SPACING = 100
+LET NEXTX = 360
+DIM OX(OBST - 1)
+DIM OH(OBST - 1)
 
-REM Read vertices into bank
-BANKCREATE(1, 24)
-RESTORE VERTS
-FOR I=1 TO 8
-  READ VID, X, Y, Z
-  BANKPOKE(1, (I-1)*3, X)
-  BANKPOKE(1, (I-1)*3+1, Y)
-  BANKPOKE(1, (I-1)*3+2, Z)
-NEXT I
-
-REM Read edges into bank
-BANKCREATE(2, 24)
-RESTORE EDGES
-FOR I=1 TO 12
-  READ EID, A, B
-  BANKPOKE(2, (I-1)*2, A)
-  BANKPOKE(2, (I-1)*2+1, B)
-NEXT I
-
-REM Arrays for projected vertices
-DIM PROJX(7)
-DIM PROJY(7)
-
-REM Rotation angles
-ANGLEX = 0
-ANGLEY = 0
-ANGLEZ = 0
-
-REM Main loop
 WHILE 1
+
   CLEARSCREEN()
-  
-  SETTEXTCOLOR("#c8c864")
-  PRINT("3D CUBE")
-  
-  ANGLEX = ANGLEX + 0.01
-  ANGLEY = ANGLEY + 0.015
-  ANGLEZ = ANGLEZ + 0.008
-  
-  REM Transform and project all vertices
-  FOR I=0 TO 7
-    X = BANKPEEK(1, I*3)
-    Y = BANKPEEK(1, I*3+1)
-    Z = BANKPEEK(1, I*3+2)
-    
-    REM Rotate around X axis
-    CX = COS(ANGLEX)
-    SX = SIN(ANGLEX)
-    Y1 = Y*CX - Z*SX
-    Z1 = Y*SX + Z*CX
-    
-    REM Rotate around Y axis
-    CY = COS(ANGLEY)
-    SY = SIN(ANGLEY)
-    X2 = X*CY + Z1*SY
-    Z2 = -X*SY + Z1*CY
-    Y2 = Y1
-    
-    REM Rotate around Z axis
-    CZ = COS(ANGLEZ)
-    SZ = SIN(ANGLEZ)
-    X3 = X2*CZ - Y2*SZ
-    Y3 = X2*SZ + Y2*CZ
-    
-    REM Perspective projection
-    FOCAL = 300
-    SCALE = FOCAL / (FOCAL + Z2 + 80)
-    PROJX(I) = X3 * SCALE + 160
-    PROJY(I) = Y3 * SCALE + 100
-  NEXT I
-  
-  REM Draw all edges
-  SETTEXTCOLOR("#00c8ff")
-  FOR I=0 TO 11
-    A = BANKPEEK(2, I*2)
-    B = BANKPEEK(2, I*2+1)
-    
-    X1 = PROJX(A)
-    Y1 = PROJY(A)
-    X2 = PROJX(B)
-    Y2 = PROJY(B)
-    
-    LINE(X1, Y1, X2, Y2)
-  NEXT I
-  
+  LET T = T + 1
+  LET SPEED = BASESPEED + (SCORE * 0.06)
+  LET GAP = SPACING
+	
+  BACKDROP()
+	HILLS()
+	STARS()
+	MOON()
+	GRASS()
+	CONTROLS()
+	JUMPCONTROL()
+	OBSTACLES()
+	PLAYER()
+	HUD()
+
   FLIP()
-ENDWHILE`;
+
+ENDWHILE
+END
+
+//FUNCTIONS
+
+FUNC BACKDROP() //Draw backdrop
+	FRECT(0, 0, 320, 200, "#07121c")
+END
+
+FUNC OBSTACLES() //Draw obstacles
+  FOR I = 0 TO OBST - 1
+    IF STARTED == 1 THEN
+      OX(I) = OX(I) - SPEED
+      IF OX(I) < -20 THEN
+        OX(I) = NEXTX
+        OH(I) = OHFIX
+        NEXTX = NEXTX + GAP + INT(RND() * 30)
+        IF DEAD == 0 THEN
+          SCORE = SCORE + 1
+        ENDIF
+      ENDIF
+    ENDIF
+    FRECT(OX(I), GROUND - OH(I), 12, OH(I), "#8b5a2b")
+    RECT(OX(I), GROUND - OH(I), 12, OH(I), "#5a3b1f")
+
+    IF STARTED == 1 THEN
+      IF DEAD == 0 THEN
+        IF RECTHIT(PLAYERX - 16, PLAYERY - 32, 32, 32, OX(I), GROUND - OH(I), 12, OH(I)) THEN
+          DEAD = 1
+          STARTED = 0
+          NEEDRESET = 1
+        ENDIF
+      ENDIF
+    ENDIF
+  NEXT
+END
+
+FUNC JUMPCONTROL() //Handle the player jumping
+  IF STARTED == 1 THEN
+    VY = VY + GRAV
+    PLAYERY = PLAYERY + VY
+    IF PLAYERY >= GROUND THEN
+      PLAYERY = GROUND
+      VY = 0
+    ENDIF
+    SNDT = SNDT + 1
+    IF PLAYERY < GROUND THEN
+      IF SNDT >= 3 THEN
+        IF VY < 0 THEN
+          SOUND(2, 12 + INT((-VY) * 2), 0.03)
+        ELSE
+          SOUND(2, 12 - INT((VY) * 2), 0.03)
+        ENDIF
+        SNDT = 0
+      ENDIF
+    ELSE
+      SNDT = 0
+    ENDIF
+  ELSE
+    PLAYERY = GROUND
+    VY = 0
+  ENDIF
+END
+
+FUNC PLAYER() //Draw the player
+  IF STARTED == 1 THEN
+    LET STEP = 6 - INT(SCORE * 0.02)
+    IF STEP < 2 THEN
+      LET STEP = 2
+    ENDIF
+    LET FRAME = INT(T / STEP) % 4
+    SETSPRITEFRAME("RUNNER", FRAME)
+    DRAWSPRITE("RUNNER", PLAYERX, PLAYERY)
+  ENDIF
+END
+
+FUNC HUD() //Draw the start message and score
+  TEXT(10, 10, "SCORE " + SCORE)
+  IF STARTED == 0 THEN
+    LET MSG1 = "PRESS SPACE"
+    LET MSG2 = "TO START"
+    LET MX1 = INT((320 - STRLEN(MSG1) * 8) / 2)
+    LET MX2 = INT((320 - STRLEN(MSG2) * 8) / 2)
+    TEXT(MX1, 90, MSG1)
+    TEXT(MX2, 104, MSG2)
+  ENDIF
+END
+
+FUNC CONTROLS() //Handle player controls
+  IF KEYDOWN("Space") == 0 THEN
+    READY = 1
+    HELD = 0
+  ENDIF
+
+  IF KEYDOWN("Space") == 1 THEN
+    IF HELD == 0 THEN
+      HELD = 1
+      IF STARTED == 0 THEN
+        IF READY == 1 THEN
+          STARTED = 1
+          DEAD = 0
+          SCORE = 0
+          VY = JUMP
+          IF NEEDRESET == 1 THEN
+            NEXTX = 360
+            FOR I = 0 TO OBST - 1
+              OX(I) = NEXTX
+              OH(I) = OHFIX
+              NEXTX = NEXTX + GAP + INT(RND() * 30)
+            NEXT
+            NEEDRESET = 0
+          ENDIF
+        ENDIF
+      ELSE
+        IF DEAD == 0 THEN
+          IF PLAYERY >= GROUND THEN
+            VY = JUMP
+          ENDIF
+        ENDIF
+      ENDIF
+    ENDIF
+  ENDIF
+END
+
+FUNC GRASS()
+  FRECT(0, GROUND, 320, 40, "#1b2f20")
+  LINE(0, GROUND, 320, GROUND, "#2f4b2a")
+END
+
+FUNC HILLS() //Draw the hills
+  FELLIPSE(70 - (T % 320), 150, 70, 18, "#111d2c")
+  FELLIPSE(200 - (T * 0.6 % 320), 155, 90, 22, "#0e1a28")
+  FELLIPSE(330 - (T * 0.8 % 320), 150, 80, 20, "#111d2c")
+END
+
+FUNC STARS() //Draw the stars
+  FOR I = 0 TO 14
+    LET SX = (I * 23 + T) % 320
+    LET SY = 16 + (I * 11) % 50
+    FRECT(SX, SY, 1, 1, "#8fb3ff")
+  NEXT
+END
+
+FUNC MOON() //Draw the moon
+	FELLIPSE(260, 40, 20, 20, "#ffe49a")
+END`;
   programInput.value = sample;
 
   function applyScreenSize(mode) {
@@ -348,8 +450,29 @@ ENDWHILE`;
     targetFps: 60,
     nextFrameTime: 0,
     windows: new Map(),
-    currentWindowId: null
+    currentWindowId: null,
+    randomSeed: null,
+    random: Math.random
   };
+
+  function makeSeededRng(seed) {
+    let t = seed >>> 0;
+    return () => {
+      t += 0x6D2B79F5;
+      let r = Math.imul(t ^ (t >>> 15), 1 | t);
+      r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function setRandomSeed(value) {
+    const num = Number(value);
+    const seed = Number.isFinite(num) ? Math.floor(num) : Date.now();
+    const seed32 = seed >>> 0;
+    state.randomSeed = seed32;
+    state.random = makeSeededRng(seed32);
+    return seed32;
+  }
 
   function resetState() {
     state.vars = {};
@@ -385,6 +508,8 @@ ENDWHILE`;
     state.nextFrameTime = 0;
     state.windows = new Map();
     state.currentWindowId = null;
+    state.randomSeed = null;
+    state.random = Math.random;
   }
 
   function pushDisplayOp(op) {
@@ -1503,7 +1628,7 @@ ENDWHILE`;
       if (terminators.has("ENDIF") && upperLine === "ENDIF") {
         return true;
       }
-      if (terminators.has("NEXT") && upperLine.startsWith("NEXT")) {
+      if (terminators.has("NEXT") && (upperLine === "NEXT" || upperLine.startsWith("NEXT "))) {
         return true;
       }
       return false;
@@ -1537,6 +1662,12 @@ ENDWHILE`;
             throw new Error(`Invalid FUNC at line ${lineNumber}: ${line}`);
           }
           const name = match[1];
+          if (functions.has(name)) {
+            throw new Error(`Duplicate function name at line ${lineNumber}: ${name}`);
+          }
+          if (builtins && Object.prototype.hasOwnProperty.call(builtins, name)) {
+            throw new Error(`Function name conflicts with builtin at line ${lineNumber}: ${name}`);
+          }
           const params = parseArguments(match[2]);
           const bodyParsed = parseStatements(i + 1, new Set(["END"]));
           functions.set(name, { params, body: bodyParsed.statements });
@@ -1712,6 +1843,17 @@ ENDWHILE`;
           continue;
         }
 
+        if (upper.startsWith("SEED")) {
+          let argText = line.slice(4).trim();
+          if (argText.startsWith("(") && argText.endsWith(")")) {
+            argText = argText.slice(1, -1).trim();
+          }
+          const expr = argText.length ? argText : null;
+          statements.push({ type: "seed", expr, line: lineNumber });
+          i += 1;
+          continue;
+        }
+
         if (upper === "END") {
           statements.push({ type: "end", line: lineNumber });
           i += 1;
@@ -1725,7 +1867,8 @@ ENDWHILE`;
           continue;
         }
 
-        const lineForAssign = upper.startsWith("LET ") ? line.slice(4).trim() : line;
+        const hasLet = upper.startsWith("LET ");
+        const lineForAssign = hasLet ? line.slice(4).trim() : line;
         const arrayAssignMatch = lineForAssign.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*\((.+)\)\s*=\s*(.+)$/);
         if (arrayAssignMatch) {
           statements.push({
@@ -1740,7 +1883,8 @@ ENDWHILE`;
         }
         const assignMatch = lineForAssign.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(.+)$/);
         if (assignMatch) {
-          statements.push({ type: "assign", name: assignMatch[1], expr: assignMatch[2], line: lineNumber });
+          const stmtType = hasLet ? "let" : "assign";
+          statements.push({ type: stmtType, name: assignMatch[1], expr: assignMatch[2], line: lineNumber });
           i += 1;
           continue;
         }
@@ -1765,10 +1909,6 @@ ENDWHILE`;
   }
 
   function transformArrayAccess(expr) {
-    if (!state.arrays || state.arrays.size === 0) {
-      return expr;
-    }
-    const arrayNames = new Set(state.arrays.keys());
     let out = "";
     let inString = false;
     let i = 0;
@@ -1790,7 +1930,8 @@ ENDWHILE`;
         while (k < expr.length && /\s/.test(expr[k])) {
           k += 1;
         }
-        if (arrayNames.has(name) && expr[k] === "(") {
+        // Transform to array access if followed by ( and not a builtin or user function
+        if (expr[k] === "(" && !Object.prototype.hasOwnProperty.call(builtins, name) && !state.functions.has(name)) {
           out += `__ARR__("${name}",`;
           i = k + 1;
           continue;
@@ -1815,7 +1956,7 @@ ENDWHILE`;
       );
       const proxy = buildFunctionProxy(scope);
       proxy.__ARR__ = (name, index) => {
-        const arr = state.arrays.get(String(name));
+        const arr = getArray(scope, String(name));
         if (!arr) {
           throw new Error(`Array not defined: ${name}`);
         }
@@ -1885,7 +2026,23 @@ ENDWHILE`;
   }
 
   function setVar(scope, name, value) {
-    scope[name] = value;
+    let target = scope;
+    while (target && !Object.prototype.hasOwnProperty.call(target, name)) {
+      target = Object.getPrototypeOf(target);
+    }
+    (target || scope)[name] = value;
+  }
+
+  function getArray(scope, name) {
+    const arrKey = "__ARR_" + name;
+    let target = scope;
+    while (target) {
+      if (Object.prototype.hasOwnProperty.call(target, arrKey)) {
+        return target[arrKey];
+      }
+      target = Object.getPrototypeOf(target);
+    }
+    return null;
   }
 
   async function callFunction(name, args, callingScope) {
@@ -1925,30 +2082,50 @@ ENDWHILE`;
           break;
         case "read":
           for (const name of stmt.names) {
+            if (state.functions.has(name) || Object.prototype.hasOwnProperty.call(builtins, name)) {
+              throw new Error(`Name conflict: ${name} is a function`);
+            }
             if (state.dataIndex >= state.dataList.length) {
               throw new Error("READ past end of DATA");
             }
             const entry = state.dataList[state.dataIndex];
             state.dataIndex += 1;
-            scope[name] = entry.value;
+            setVar(scope, name, entry.value);
           }
           break;
+        case "seed": {
+          const seedVal = stmt.expr ? await awaitValue(evalExpression(stmt.expr, scope)) : undefined;
+          setRandomSeed(seedVal);
+          break;
+        }
         case "dim":
           for (const dim of stmt.dims) {
+            if (state.functions.has(dim.name) || Object.prototype.hasOwnProperty.call(builtins, dim.name)) {
+              throw new Error(`Name conflict: ${dim.name} is a function`);
+            }
             const sizeVal = await awaitValue(evalExpression(dim.sizeExpr, scope));
             const sizeNum = Math.floor(Number(sizeVal));
             if (!Number.isFinite(sizeNum) || sizeNum < 0) {
               throw new Error(`Invalid DIM size for ${dim.name}`);
             }
             const len = sizeNum + 1;
-            state.arrays.set(dim.name, new Array(len).fill(0));
+            scope["__ARR_" + dim.name] = new Array(len).fill(0);
           }
           break;
         case "assign":
+          if (state.functions.has(stmt.name) || Object.prototype.hasOwnProperty.call(builtins, stmt.name)) {
+            throw new Error(`Name conflict: ${stmt.name} is a function`);
+          }
           setVar(scope, stmt.name, await awaitValue(evalExpression(stmt.expr, scope)));
           break;
+        case "let":
+          if (state.functions.has(stmt.name) || Object.prototype.hasOwnProperty.call(builtins, stmt.name)) {
+            throw new Error(`Name conflict: ${stmt.name} is a function`);
+          }
+          scope[stmt.name] = await awaitValue(evalExpression(stmt.expr, scope));
+          break;
         case "arrayAssign": {
-          const arr = state.arrays.get(stmt.name);
+          const arr = getArray(scope, stmt.name);
           if (!arr) {
             throw new Error(`Array not defined: ${stmt.name}`);
           }
@@ -2274,7 +2451,8 @@ ENDWHILE`;
     },
     RND: (max) => {
       const m = max === undefined ? 1 : Number(max);
-      return Math.random() * (Number.isFinite(m) ? m : 1);
+      const rand = state.random ? state.random() : Math.random();
+      return rand * (Number.isFinite(m) ? m : 1);
     },
     INT: (value) => {
       return Math.floor(Number(value));
@@ -2394,7 +2572,8 @@ ENDWHILE`;
         const buffer = ctxAudio.createBuffer(1, bufferSize, ctxAudio.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i += 1) {
-          data[i] = Math.random() * 2 - 1;
+          const rand = state.random ? state.random() : Math.random();
+          data[i] = rand * 2 - 1;
         }
         const source = ctxAudio.createBufferSource();
         source.buffer = buffer;
@@ -2921,7 +3100,8 @@ ENDWHILE`;
       "ENDWHILE",
       "FUNC",
       "RETURN",
-      "END"
+      "END",
+      "SEED"
     ];
 
     const tokenRegex = new RegExp(

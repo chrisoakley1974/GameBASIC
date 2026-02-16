@@ -1985,11 +1985,37 @@ END`;
   }
 
   function normalizeOperators(expr) {
-    return expr
+    // Replace textual operators first
+    let out = expr
       .replace(/<>/g, "!=")
       .replace(/\bAND\b/g, "&&")
       .replace(/\bOR\b/g, "||")
       .replace(/\bNOT\b/g, "!");
+
+    // Replace single '&' (string concat in GameBASIC) with '+' for JS
+    // but leave '&&' intact and do not touch '&' inside string literals
+    let res = "";
+    let inString = false;
+    for (let i = 0; i < out.length; i += 1) {
+      const ch = out[i];
+      if (ch === '"') {
+        inString = !inString;
+        res += ch;
+        continue;
+      }
+      if (!inString && ch === '&') {
+        // preserve logical AND '&&'
+        if (out[i + 1] === '&') {
+          res += '&&';
+          i += 1;
+        } else {
+          res += '+';
+        }
+        continue;
+      }
+      res += ch;
+    }
+    return res;
   }
 
   function transformArrayAccess(expr) {

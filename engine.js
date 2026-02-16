@@ -427,6 +427,7 @@ END`;
     pixelMode: 0,
     sprites: new Map(),
     spriteBanks: new Map(),
+    tilemaps: new Map(),
     displayOps: [],
     currentLine: null,
     banks: new Map(),
@@ -480,6 +481,7 @@ END`;
     state.statements = [];
     state.sprites = new Map();
     state.spriteBanks = new Map();
+    state.tilemaps = new Map();
     state.displayOps = [];
     state.currentLine = null;
     state.banks = new Map();
@@ -964,6 +966,30 @@ END`;
           ctx.fill();
         }
       } else if (op.type === "screenDraw") {
+        // tilemap draw support
+      } else if (op.type === "tilemap") {
+        const map = state.tilemaps.get(op.mapId);
+        const tileBank = state.spriteBanks.get(op.bankId);
+        if (map && tileBank && tileBank.img && tileBank.loaded) {
+          const frameW = tileBank.frameW;
+          const frameH = tileBank.frameH;
+          const framesPerRow = Math.max(1, tileBank.framesPerRow);
+          const scale = Number(op.scale) || 1;
+          const dstW = frameW * scale;
+          const dstH = frameH * scale;
+          const startX = op.x + baseX;
+          const startY = op.y + baseY;
+          for (let ry = 0; ry < map.rows; ry += 1) {
+            for (let cx = 0; cx < map.cols; cx += 1) {
+              const tileIndex = Number(map.data[ry * map.cols + cx]) || 0;
+              const sx = (tileIndex % framesPerRow) * frameW;
+              const sy = Math.floor(tileIndex / framesPerRow) * frameH;
+              const dx = startX + cx * dstW;
+              const dy = startY + ry * dstH;
+              ctx.drawImage(tileBank.img, sx, sy, frameW, frameH, dx, dy, dstW, dstH);
+            }
+          }
+        }
         const bank = state.banks.get(op.bankId);
         if (bank) {
           const imageData = ctx.createImageData(canvas.width, canvas.height);
@@ -1676,6 +1702,64 @@ END`;
         }
 
         if (upper.startsWith("IF ")) {
+          // Support single-line IF ... THEN <stmt> ENDIF
+          const singleLineMatch = line.match(/^IF\s+(.+?)\s+THEN\s+(.+?)\s+ENDIF$/i);
+          if (singleLineMatch) {
+            const cond = singleLineMatch[1];
+            const bodyText = singleLineMatch[2].trim();
+            const bodyStmts = [];
+            if (!/^REM\b/i.test(bodyText) && !bodyText.startsWith("//")) {
+              const hasLetB = bodyText.toUpperCase().startsWith("LET ");
+              const lineForAssignB = hasLetB ? bodyText.slice(4).trim() : bodyText;
+              const arrayAssignMatchB = lineForAssignB.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*\((.+)\)\s*=\s*(.+)$/);
+              if (arrayAssignMatchB) {
+                bodyStmts.push({ type: "arrayAssign", name: arrayAssignMatchB[1], indexExpr: arrayAssignMatchB[2], expr: arrayAssignMatchB[3], line: lineNumber });
+              } else {
+                const assignMatchB = lineForAssignB.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(.+)$/);
+                if (assignMatchB) {
+                  const stmtTypeB = hasLetB ? "let" : "assign";
+                  bodyStmts.push({ type: stmtTypeB, name: assignMatchB[1], expr: assignMatchB[2], line: lineNumber });
+                } else {
+                  bodyStmts.push({ type: "expr", expr: bodyText, line: lineNumber });
+                }
+              }
+            }
+            const branches = [];
+            branches.push({ condition: cond, body: bodyStmts, line: lineNumber });
+            statements.push({ type: "if", branches, elseBody: null, line: lineNumber });
+            i += 1;
+            continue;
+          }
+
+          // Support single-line IF ... THEN <stmt> (no ENDIF required)
+          const singleLineNoEndMatch = line.match(/^IF\s+(.+?)\s+THEN\s+(.+)$/i);
+          if (singleLineNoEndMatch) {
+            const cond = singleLineNoEndMatch[1];
+            const bodyText = singleLineNoEndMatch[2].trim();
+            const bodyStmts = [];
+            if (!/^REM\b/i.test(bodyText) && !bodyText.startsWith("//")) {
+              const hasLetB = bodyText.toUpperCase().startsWith("LET ");
+              const lineForAssignB = hasLetB ? bodyText.slice(4).trim() : bodyText;
+              const arrayAssignMatchB = lineForAssignB.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*\((.+)\)\s*=\s*(.+)$/);
+              if (arrayAssignMatchB) {
+                bodyStmts.push({ type: "arrayAssign", name: arrayAssignMatchB[1], indexExpr: arrayAssignMatchB[2], expr: arrayAssignMatchB[3], line: lineNumber });
+              } else {
+                const assignMatchB = lineForAssignB.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(.+)$/);
+                if (assignMatchB) {
+                  const stmtTypeB = hasLetB ? "let" : "assign";
+                  bodyStmts.push({ type: stmtTypeB, name: assignMatchB[1], expr: assignMatchB[2], line: lineNumber });
+                } else {
+                  bodyStmts.push({ type: "expr", expr: bodyText, line: lineNumber });
+                }
+              }
+            }
+            const branchesNoEnd = [];
+            branchesNoEnd.push({ condition: cond, body: bodyStmts, line: lineNumber });
+            statements.push({ type: "if", branches: branchesNoEnd, elseBody: null, line: lineNumber });
+            i += 1;
+            continue;
+          }
+
           const ifMatch = line.match(/^IF\s+(.+)\s+THEN$/i);
           if (!ifMatch) {
             throw new Error(`Invalid IF at line ${lineNumber}: ${line}`);
@@ -2779,6 +2863,129 @@ END`;
       };
       img.src = String(dataUrl);
       state.spriteBanks.set(id, bank);
+      return null;
+    },
+    // Tilemap support
+    TILEMAP_CREATE: (id, cols, rows) => {
+      const key = String(id);
+      const c = Math.floor(Number(cols));
+      const r = Math.floor(Number(rows));
+      if (!Number.isFinite(c) || c <= 0 || !Number.isFinite(r) || r <= 0) {
+        throw new Error('TILEMAP_CREATE requires numeric cols and rows');
+      }
+      state.tilemaps.set(key, { cols: c, rows: r, data: new Array(c * r).fill(0) });
+      return null;
+    },
+    TILEMAP_SET: (id, x, y, value) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) throw new Error(`TILEMAP_SET: map not found: ${key}`);
+      const xi = Math.floor(Number(x));
+      const yi = Math.floor(Number(y));
+      if (!Number.isFinite(xi) || !Number.isFinite(yi) || xi < 0 || yi < 0 || xi >= map.cols || yi >= map.rows) {
+        throw new Error(`TILEMAP_SET: coordinates out of range: ${xi},${yi}`);
+      }
+      map.data[yi * map.cols + xi] = Number(value) || 0;
+      return null;
+    },
+    TILEMAP_GET: (id, x, y) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) throw new Error(`TILEMAP_GET: map not found: ${key}`);
+      const xi = Math.floor(Number(x));
+      const yi = Math.floor(Number(y));
+      if (!Number.isFinite(xi) || !Number.isFinite(yi) || xi < 0 || yi < 0 || xi >= map.cols || yi >= map.rows) {
+        throw new Error(`TILEMAP_GET: coordinates out of range: ${xi},${yi}`);
+      }
+      return map.data[yi * map.cols + xi];
+    },
+    TILEMAP_FILL: (id, value) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) throw new Error(`TILEMAP_FILL: map not found: ${key}`);
+      const v = Number(value) || 0;
+      for (let i = 0; i < map.data.length; i += 1) map.data[i] = v;
+      return null;
+    },
+    TILEMAP_COLLIDE: (id, x, y, value) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) return 0;
+      const xi = Math.floor(Number(x));
+      const yi = Math.floor(Number(y));
+      if (!Number.isFinite(xi) || !Number.isFinite(yi)) return 0;
+      if (xi < 0 || yi < 0 || xi >= map.cols || yi >= map.rows) return 0;
+      const v = Number(value) || 0;
+      return map.data[yi * map.cols + xi] === v ? 1 : 0;
+    },
+    TILEMAP_COLLIDE_RECT: (id, x, y, w, h, value) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) return 0;
+      const xi = Math.floor(Number(x));
+      const yi = Math.floor(Number(y));
+      const wi = Math.floor(Number(w));
+      const hi = Math.floor(Number(h));
+      if (!Number.isFinite(xi) || !Number.isFinite(yi) || !Number.isFinite(wi) || !Number.isFinite(hi)) return 0;
+      const v = Number(value) || 0;
+      const x0 = Math.max(0, xi);
+      const y0 = Math.max(0, yi);
+      const x1 = Math.min(map.cols - 1, xi + wi - 1);
+      const y1 = Math.min(map.rows - 1, yi + hi - 1);
+      if (x1 < x0 || y1 < y0) return 0;
+      for (let ry = y0; ry <= y1; ry += 1) {
+        for (let cx = x0; cx <= x1; cx += 1) {
+          if (map.data[ry * map.cols + cx] === v) return 1;
+        }
+      }
+      return 0;
+    },
+    // Pixel-based collision helpers (tile size default 8)
+    TILEMAP_COLLIDE_PIXEL: (id, px, py, value, tileSize = 8) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) return 0;
+      const ts = Math.max(1, Math.floor(Number(tileSize)));
+      const xi = Math.floor(Number(px) / ts);
+      const yi = Math.floor(Number(py) / ts);
+      if (!Number.isFinite(xi) || !Number.isFinite(yi)) return 0;
+      if (xi < 0 || yi < 0 || xi >= map.cols || yi >= map.rows) return 0;
+      const v = Number(value) || 0;
+      return map.data[yi * map.cols + xi] === v ? 1 : 0;
+    },
+    TILEMAP_COLLIDE_RECT_PIXEL: (id, px, py, pw, ph, value, tileSize = 8) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) return 0;
+      const ts = Math.max(1, Math.floor(Number(tileSize)));
+      const x0 = Math.floor(Number(px) / ts);
+      const y0 = Math.floor(Number(py) / ts);
+      const x1 = Math.floor((Number(px) + Number(pw) - 1) / ts);
+      const y1 = Math.floor((Number(py) + Number(ph) - 1) / ts);
+      if (!Number.isFinite(x0) || !Number.isFinite(y0) || !Number.isFinite(x1) || !Number.isFinite(y1)) return 0;
+      const ax0 = Math.max(0, x0);
+      const ay0 = Math.max(0, y0);
+      const ax1 = Math.min(map.cols - 1, x1);
+      const ay1 = Math.min(map.rows - 1, y1);
+      if (ax1 < ax0 || ay1 < ay0) return 0;
+      const v = Number(value) || 0;
+      for (let ry = ay0; ry <= ay1; ry += 1) {
+        for (let cx = ax0; cx <= ax1; cx += 1) {
+          if (map.data[ry * map.cols + cx] === v) return 1;
+        }
+      }
+      return 0;
+    },
+    TILEMAP_DRAW: (id, x, y, bankId, scale = 1) => {
+      const key = String(id);
+      const map = state.tilemaps.get(key);
+      if (!map) throw new Error(`TILEMAP_DRAW: map not found: ${key}`);
+      const bx = Math.floor(Number(x)) || 0;
+      const by = Math.floor(Number(y)) || 0;
+      const bId = Number(bankId);
+      if (!Number.isFinite(bId)) throw new Error('TILEMAP_DRAW requires a numeric bankId');
+      const s = Number(scale) || 1;
+      pushDisplayOp({ type: 'tilemap', mapId: key, x: bx, y: by, bankId: bId, scale: s });
       return null;
     },
     BANKCOPY: (srcId, dstId) => {

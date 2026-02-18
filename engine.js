@@ -131,7 +131,7 @@
     0x18,0x18,0x18,0x00,0x18,0x18,0x18,0x00, 0x70,0x18,0x18,0x0E,0x18,0x18,0x70,0x00,
     0x76,0xDC,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x10,0x38,0x6C,0xC6,0xC6,0xFE,0x00
   ]);
-  const sample = `REM Endless runner demo (paste your sprite data URL below)
+  const sample = `REM Endless runner demo
 CLS()
 CLEARSCREEN()
 
@@ -160,7 +160,7 @@ LET SNDT = 0
 
 LET OBST = 9
 LET OHFIX = 24
-LET SPACING = 100
+LET SPACING = 150
 LET NEXTX = 360
 DIM OX(OBST - 1)
 DIM OH(OBST - 1)
@@ -195,18 +195,35 @@ FUNC BACKDROP() //Draw backdrop
 END
 
 FUNC OBSTACLES() //Draw obstacles
+
+  // Find the current right-most obstacle X
+  LET RIGHTMOST = 320
+  FOR J = 0 TO OBST - 1
+    IF OX(J) > RIGHTMOST THEN
+      RIGHTMOST = OX(J)
+    ENDIF
+  NEXT
+
   FOR I = 0 TO OBST - 1
+
     IF STARTED == 1 THEN
       OX(I) = OX(I) - SPEED
+
       IF OX(I) < -20 THEN
-        OX(I) = NEXTX
+        // Respawn just after the right-most obstacle
+        OX(I) = RIGHTMOST + GAP + INT(RND() * 30)
         OH(I) = OHFIX
-        NEXTX = NEXTX + GAP + INT(RND() * 30)
+
+        // Update rightmost so if multiple wrap in same frame,
+        // they still get spaced properly
+        RIGHTMOST = OX(I)
+
         IF DEAD == 0 THEN
           SCORE = SCORE + 1
         ENDIF
       ENDIF
     ENDIF
+
     FRECT(OX(I), GROUND - OH(I), 12, OH(I), "#8b5a2b")
     RECT(OX(I), GROUND - OH(I), 12, OH(I), "#5a3b1f")
 
@@ -219,6 +236,7 @@ FUNC OBSTACLES() //Draw obstacles
         ENDIF
       ENDIF
     ENDIF
+
   NEXT
 END
 
@@ -2042,6 +2060,14 @@ END`;
         }
         // Transform to array access if followed by ( and not a builtin or user function
         if (expr[k] === "(" && !Object.prototype.hasOwnProperty.call(builtins, name) && !state.functions.has(name)) {
+          // Check for empty parentheses (ARR()), which we treat as an array reference
+          let p = k + 1;
+          while (p < expr.length && /\s/.test(expr[p])) p += 1;
+          if (expr[p] === ")") {
+            out += `__ARR_REF__("${name}")`;
+            i = p + 1;
+            continue;
+          }
           out += `__ARR__("${name}",`;
           i = k + 1;
           continue;
@@ -2075,6 +2101,10 @@ END`;
           return 0;
         }
         return arr[idx] ?? 0;
+      };
+      proxy.__ARR_REF__ = (name) => {
+        const arr = getArray(scope, String(name));
+        return arr || [];
       };
       return fn(scope, proxy);
     } catch (error) {
@@ -2162,8 +2192,15 @@ END`;
     }
     const localScope = Object.create(callingScope);
     func.params.forEach((param, index) => {
-      if (param.length > 0) {
-        localScope[param] = args[index];
+      const raw = String(param ?? "").trim();
+      if (!raw) return;
+      const arrMatch = raw.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*$/);
+      if (arrMatch) {
+        const nameOnly = arrMatch[1];
+        // Bind the passed array (or an empty array) to the internal array slot
+        localScope["__ARR_" + nameOnly] = args[index] ?? [];
+      } else {
+        localScope[raw] = args[index];
       }
     });
     const result = await executeStatements(func.body, localScope);

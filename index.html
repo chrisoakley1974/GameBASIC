@@ -7,20 +7,53 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+    <!-- New File Confirmation Modal -->
+    <div id="newFileModal" class="modal" aria-hidden="true">
+      <div class="modal-content" style="max-width:340px;margin:auto;">
+        <div class="modal-header" style="justify-content:center;border-bottom:none;margin:16px 0px; ">
+          <h2 style="font-size:1.2em;text-align:center;width:100%;margin:0;">New Project</h2>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:8px 18px 18px 18px;border-top:1px solid #1f2a38">
+          <p style="margin-bottom:24px;">Clear all code, Base64 data, and sprite editor data?</p>
+          <div style="display:flex;justify-content:center;gap:18px;">
+            <button id="newFileModalConfirm" type="button" style="background:#ff8c4c;min-width:70px;">Yes</button>
+            <button id="newFileModalCancel" type="button" style="min-width:70px;">No</button>
+          </div>
+        </div>
+      </div>
+    </div>
   <div class="app">
     <div class="layout">
       <section class="editor">
         <div class="toolbar">
           <button id="runBtn">Run</button>
           <button id="stopBtn">Stop</button>
-          <button id="spriteEditorBtn" type="button">Sprite Editor</button>
-          <button id="saveBtn">Save</button>
-          <button id="loadBtn">Load</button>
           <input id="fileInput" type="file" accept=".basic,.bas,.txt" hidden />
           <span class="toolbar-spacer"></span>
-          <button id="exportHtmlBtn" type="button">Export HTML</button>
+          <div class="dropdown" style="margin-right:8px;">
+            <button id="fileDropdownBtn" class="dropdown-btn">File ▼</button>
+            <div class="dropdown-menu" id="fileDropdownMenu">
+              <button id="newFileBtn" type="button">New</button>
+              <button id="saveBtn" type="button">Save</button>
+              <button id="loadBtn" type="button">Load</button>
+            </div>
+          </div>
+          <div class="dropdown">
+            <button id="toolsDropdownBtn" class="dropdown-btn">Tools ▼</button>
+            <div class="dropdown-menu" id="toolsDropdownMenu">
+              <button id="spriteEditorBtn" type="button">Sprite Editor</button>
+              <button id="base64PanelBtn" type="button">Base64 Data Panel</button>
+              <button id="exportHtmlBtn" type="button">Export HTML</button>
+            </div>
+          </div>
           <span id="shareStatus" class="toolbar-status" aria-live="polite"></span>
-          <a class="toolbar-link" href="help.html" target="_blank" rel="noopener">Help</a>
+          <div class="dropdown">
+            <button id="helpDropdownBtn" class="dropdown-btn">Help ▼</button>
+            <div class="dropdown-menu" id="helpDropdownMenu">
+              <a href="help.html" target="_blank" rel="noopener" style="display:block;padding:10px 18px;text-decoration:none;color:var(--text);">Online Help</a>
+              <button id="aboutBtn" type="button">About</button>
+            </div>
+          </div>
         </div>
         <div class="code-editor">
           <pre id="lineNumbers" aria-hidden="true"></pre>
@@ -46,19 +79,47 @@
             <canvas id="screen" width="320" height="200"></canvas>
           </div>
         </div>
-        <div class="engine-attribution" style="margin:0 0 0 0;text-align:left;font-size:1.08em;color:#ffe49a;">
+        <div class="engine-attribution" style="display:none;margin:0 0 0 0;text-align:left;font-size:1.08em;color:#ffe49a;">
           <p><strong>GameBASIC</strong> is a retro-inspired BASIC language developed by Chris Oakley</p>
           <p>Write fast-paced, pixel-perfect arcade games just like the classics of the 80s and 90s and bring the golden age of gaming back to life, right in your browser, then export them into a fully working HTML file.</p>
           <p>Think ZX Spectrum BASIC, BBC Micro BASIC, STOS and AMOS all-in-one.</p>
           Support it <a href="https://github.com/chrisoakley1974/GameBASIC" target="_blank" rel="noopener" style="color:#8fd3ff;text-decoration:underline;">View on GitHub</a>
+          <div class="paypal-button" style="margin-top:22px;margin-bottom:18px;">
+            <style>.pp-3FW2D6ZNMZYQA{text-align:center;border:none;border-radius:0.25rem;min-width:11.625rem;padding:0 2rem;height:2.625rem;font-weight:bold;background-color:#FFD140;color:#000000;font-family:"Helvetica Neue",Arial,sans-serif;font-size:1rem;line-height:1.25rem;cursor:pointer;}</style>
+            <form action="https://www.paypal.com/ncp/payment/3FW2D6ZNMZYQA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
+              <input class="pp-3FW2D6ZNMZYQA" type="submit" value="Buy Chris a Coffee" />
+              <img src=https://www.paypalobjects.com/images/Debit_Credit_APM.svg alt="cards" />
+              <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
+            </form>
+          </div>
         </div>
-        <div class="engine-attribution">
-          <style>.pp-3FW2D6ZNMZYQA{text-align:center;border:none;border-radius:0.25rem;min-width:11.625rem;padding:0 2rem;height:2.625rem;font-weight:bold;background-color:#FFD140;color:#000000;font-family:"Helvetica Neue",Arial,sans-serif;font-size:1rem;line-height:1.25rem;cursor:pointer;}</style>
-          <form action="https://www.paypal.com/ncp/payment/3FW2D6ZNMZYQA" method="post" target="_blank" style="display:inline-grid;justify-items:center;align-content:start;gap:0.5rem;">
-            <input class="pp-3FW2D6ZNMZYQA" type="submit" value="Buy Chris a Coffee" />
-            <img src=https://www.paypalobjects.com/images/Debit_Credit_APM.svg alt="cards" />
-            <section style="font-size: 0.75rem;"> Powered by <img src="https://www.paypalobjects.com/paypal-ui/logos/svg/paypal-wordmark-color.svg" alt="paypal" style="height:0.875rem;vertical-align:middle;"/></section>
-          </form>
+        <!-- About Modal -->
+        <div id="aboutModal" class="modal" aria-hidden="true">
+          <div class="modal-content" style="max-width:480px;margin:auto;">
+            <div class="modal-header" style="justify-content:center;border-bottom:none;margin:16px 0px;">
+              <h2 style="font-size:1.2em;text-align:center;width:100%;margin:0;">About GameBASIC</h2>
+              <button id="aboutModalClose" type="button">Close</button>
+            </div>
+            <div class="modal-body" id="aboutModalBody" style="text-align:left;padding:18px 18px 18px 18px;border-top:1px solid #1f2a38;color:#ffe49a;font-size:1.08em;">
+              <!-- Attribution content will be injected here -->
+            </div>
+          </div>
+        </div>
+          <!-- Base64 Data Panel Modal -->
+          <div id="base64PanelModal" class="modal" aria-hidden="true">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2>Base64 Data Panel</h2>
+                <button id="base64PanelClose" type="button">Close</button>
+              </div>
+              <div class="modal-body">
+                <div class="base64-toolbar">
+                  <button id="addBase64Btn" type="button">Add Entry</button>
+                </div>
+                <div id="base64List" class="base64-list"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

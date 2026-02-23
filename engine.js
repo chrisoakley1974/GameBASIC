@@ -1,5 +1,204 @@
 (() => {
-  const programInput = document.getElementById("programInput");
+          // Help dropdown logic
+          const helpDropdownBtn = document.getElementById("helpDropdownBtn");
+          const helpDropdownMenu = document.getElementById("helpDropdownMenu");
+          const helpDropdown = helpDropdownBtn?.parentElement;
+          if (helpDropdownBtn && helpDropdownMenu && helpDropdown) {
+            helpDropdownBtn.addEventListener("click", (e) => {
+              e.stopPropagation();
+              // Close other dropdowns if open
+              const fileDropdown = document.getElementById("fileDropdownBtn")?.parentElement;
+              if (fileDropdown && fileDropdown.classList.contains("open")) fileDropdown.classList.remove("open");
+              const toolsDropdown = document.getElementById("toolsDropdownBtn")?.parentElement;
+              if (toolsDropdown && toolsDropdown.classList.contains("open")) toolsDropdown.classList.remove("open");
+              helpDropdown.classList.toggle("open");
+            });
+            document.addEventListener("click", (e) => {
+              if (!helpDropdown.contains(e.target)) {
+                helpDropdown.classList.remove("open");
+              }
+            });
+            helpDropdownMenu.addEventListener("click", (e) => {
+              helpDropdown.classList.remove("open");
+            });
+          }
+
+          // About modal logic
+          const aboutBtn = document.getElementById("aboutBtn");
+          const aboutModal = document.getElementById("aboutModal");
+          const aboutModalClose = document.getElementById("aboutModalClose");
+          const aboutModalBody = document.getElementById("aboutModalBody");
+          const attributionDiv = document.querySelector(".engine-attribution");
+          if (aboutBtn && aboutModal && aboutModalClose && aboutModalBody && attributionDiv) {
+            aboutBtn.addEventListener("click", () => {
+              // Copy attribution content into modal body
+              aboutModalBody.innerHTML = attributionDiv.innerHTML;
+              aboutModal.classList.add("open");
+              aboutModal.setAttribute("aria-hidden", "false");
+            });
+            aboutModalClose.addEventListener("click", () => {
+              aboutModal.classList.remove("open");
+              aboutModal.setAttribute("aria-hidden", "true");
+            });
+            // Close modal on Escape
+            aboutModal.addEventListener("keydown", (e) => {
+              if (e.key === "Escape") {
+                aboutModal.classList.remove("open");
+                aboutModal.setAttribute("aria-hidden", "true");
+              }
+            });
+          }
+        function resetSpriteEditor() {
+          // Clear sprite editor canvas
+          if (typeof spriteEditorCanvas !== "undefined" && spriteEditorCanvas) {
+            const ctx = spriteEditorCanvas.getContext("2d");
+            ctx.clearRect(0, 0, spriteEditorCanvas.width, spriteEditorCanvas.height);
+          }
+          // Clear sprite grid canvas
+          if (typeof spriteGridCanvas !== "undefined" && spriteGridCanvas) {
+            const ctx = spriteGridCanvas.getContext("2d");
+            ctx.clearRect(0, 0, spriteGridCanvas.width, spriteGridCanvas.height);
+          }
+          // Reset sprite editor state variables if any
+          if (typeof spriteUndoBtn !== "undefined" && spriteUndoBtn) spriteUndoBtn.disabled = true;
+          if (typeof spriteRedoBtn !== "undefined" && spriteRedoBtn) spriteRedoBtn.disabled = true;
+          // Optionally reset other sprite editor fields
+          if (typeof spriteDataUrl !== "undefined" && spriteDataUrl) spriteDataUrl.value = "";
+          // Reset sprite editor modal state if needed
+          // (Add more resets as required for your editor)
+        }
+  document.addEventListener("DOMContentLoaded", function() {
+    // File dropdown menu logic
+    const fileDropdownBtn = document.getElementById("fileDropdownBtn");
+    const fileDropdownMenu = document.getElementById("fileDropdownMenu");
+    const fileDropdown = fileDropdownBtn?.parentElement;
+    if (fileDropdownBtn && fileDropdownMenu && fileDropdown) {
+      fileDropdownBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // Close Tools dropdown if open
+        const toolsDropdown = document.getElementById("toolsDropdownBtn")?.parentElement;
+        if (toolsDropdown && toolsDropdown.classList.contains("open")) {
+          toolsDropdown.classList.remove("open");
+        }
+        // Close Help dropdown if open
+        const helpDropdown = document.getElementById("helpDropdownBtn")?.parentElement;
+        if (helpDropdown && helpDropdown.classList.contains("open")) {
+          helpDropdown.classList.remove("open");
+        }
+        fileDropdown.classList.toggle("open");
+      });
+      document.addEventListener("click", (e) => {
+        if (!fileDropdown.contains(e.target)) {
+          fileDropdown.classList.remove("open");
+        }
+      });
+      fileDropdownMenu.addEventListener("click", (e) => {
+        fileDropdown.classList.remove("open");
+      });
+    }
+
+    // New file modal logic
+    const newFileBtn = document.getElementById("newFileBtn");
+    const newFileModal = document.getElementById("newFileModal");
+    const newFileModalClose = document.getElementById("newFileModalClose");
+    const newFileModalCancel = document.getElementById("newFileModalCancel");
+    const newFileModalConfirm = document.getElementById("newFileModalConfirm");
+    if (newFileBtn && newFileModal) {
+      newFileBtn.addEventListener("click", () => {
+        newFileModal.classList.add("open");
+        newFileModal.setAttribute("aria-hidden", "false");
+      });
+      function closeNewFileModal() {
+        newFileModal.classList.remove("open");
+        newFileModal.setAttribute("aria-hidden", "true");
+      }
+      if (newFileModalCancel) newFileModalCancel.addEventListener("click", closeNewFileModal);
+      if (newFileModalConfirm) {
+        newFileModalConfirm.addEventListener("click", () => {
+          // Clear code
+          programInput.value = "";
+          if (window.syncHighlight) window.syncHighlight();
+          if (window.syncLineNumbers) window.syncLineNumbers();
+          // Also clear highlight and line numbers manually if needed
+          const highlight = document.getElementById("highlight");
+          if (highlight) highlight.textContent = "";
+          const lineNumbers = document.getElementById("lineNumbers");
+          if (lineNumbers) lineNumbers.textContent = "";
+          if (window.resetState) window.resetState();
+          // Clear sprite editor data
+          resetSpriteEditor();
+          // Clear Base64 data
+          if (state && Array.isArray(state.base64Data)) {
+            state.base64Data.length = 0;
+          }
+          renderBase64List();
+          closeNewFileModal();
+        });
+      }
+      // Close modal on Escape
+      newFileModal.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeNewFileModal();
+      });
+    }
+
+    // Dropdown menu logic
+    const toolsDropdownBtn = document.getElementById("toolsDropdownBtn");
+    const toolsDropdownMenu = document.getElementById("toolsDropdownMenu");
+    const dropdown = toolsDropdownBtn?.parentElement;
+    if (toolsDropdownBtn && toolsDropdownMenu && dropdown) {
+      toolsDropdownBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        // Close File dropdown if open
+        const fileDropdown = document.getElementById("fileDropdownBtn")?.parentElement;
+        if (fileDropdown && fileDropdown.classList.contains("open")) {
+          fileDropdown.classList.remove("open");
+        }
+        // Close Help dropdown if open
+        const helpDropdown = document.getElementById("helpDropdownBtn")?.parentElement;
+        if (helpDropdown && helpDropdown.classList.contains("open")) {
+          helpDropdown.classList.remove("open");
+        }
+        dropdown.classList.toggle("open");
+      });
+      document.addEventListener("click", (e) => {
+        if (!dropdown.contains(e.target)) {
+          dropdown.classList.remove("open");
+        }
+      });
+      toolsDropdownMenu.addEventListener("click", (e) => {
+        dropdown.classList.remove("open");
+      });
+    }
+
+    const programInput = document.getElementById("programInput");
+    const base64PanelBtn = document.getElementById("base64PanelBtn");
+    const base64PanelModal = document.getElementById("base64PanelModal");
+    const base64PanelClose = document.getElementById("base64PanelClose");
+    window.base64List = document.getElementById("base64List");
+    const addBase64Btn = document.getElementById("addBase64Btn");
+    // Modal open/close logic
+    if (base64PanelBtn && base64PanelModal) {
+      base64PanelBtn.addEventListener("click", () => {
+        base64PanelModal.classList.add("open");
+        base64PanelModal.setAttribute("aria-hidden", "false");
+      });
+    }
+    if (base64PanelClose && base64PanelModal) {
+      base64PanelClose.addEventListener("click", () => {
+        base64PanelModal.classList.remove("open");
+        base64PanelModal.setAttribute("aria-hidden", "true");
+      });
+    }
+    // Close modal on Escape
+    if (base64PanelModal) {
+      base64PanelModal.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          base64PanelModal.classList.remove("open");
+          base64PanelModal.setAttribute("aria-hidden", "true");
+        }
+      });
+    }
+  });
   const runBtn = document.getElementById("runBtn");
   const stopBtn = document.getElementById("stopBtn");
   const saveBtn = document.getElementById("saveBtn");
@@ -452,7 +651,7 @@ END`;
     fontBank: 0,
     borderColor: "#0a1018",
     screenBg: "#0a1018",
-    textColor: "#d8f3ff",
+    textColor: "d8f3ff",
     arrays: new Map(),
     dataList: [],
     dataIndex: 0,
@@ -471,8 +670,108 @@ END`;
     windows: new Map(),
     currentWindowId: null,
     randomSeed: null,
-    random: Math.random
+    random: Math.random,
+    base64Data: [] // { name: string, value: string }
   };
+
+
+  function renderBase64List() {
+    if (!window.base64List) return;
+    window.base64List.innerHTML = "";
+    state.base64Data.forEach((entry, idx) => {
+      const item = document.createElement("div");
+      item.className = "base64-entry";
+      // Edit mode
+      if (entry._editing) {
+        item.innerHTML = `
+          <div class="base64-edit-row">
+            <input class="base64-edit-name" type="text" value="${entry.name}" placeholder="Name" />
+            <button data-save="${idx}">Save</button>
+            <button data-cancel="${idx}">Cancel</button>
+          </div>
+          <textarea class="base64-edit-data" rows="4" placeholder="Base64 data">${entry.value}</textarea>
+        `;
+      } else {
+        item.innerHTML = `
+          <div class="base64-edit-row">
+            <strong>${entry.name}</strong>
+            <div class="base64-entry-actions">
+              <button data-edit="${idx}">Edit</button>
+              <button data-delete="${idx}">Delete</button>
+            </div>
+          </div>
+          <textarea class="base64-edit-data" rows="6" readonly>${entry.value}</textarea>
+        `;
+      }
+      window.base64List.appendChild(item);
+    });
+  }
+
+  function addBase64Entry(name, value) {
+    state.base64Data.push({ name, value });
+    renderBase64List();
+  }
+
+  function editBase64Entry(idx) {
+    if (state.base64Data[idx]) {
+      state.base64Data[idx]._editing = true;
+      renderBase64List();
+    }
+  }
+  function saveBase64Entry(idx, name, value) {
+    if (state.base64Data[idx]) {
+      state.base64Data[idx].name = name;
+      state.base64Data[idx].value = value;
+      delete state.base64Data[idx]._editing;
+      renderBase64List();
+    }
+  }
+  function cancelEditBase64Entry(idx) {
+    if (state.base64Data[idx]) {
+      delete state.base64Data[idx]._editing;
+      renderBase64List();
+    }
+  }
+
+  function deleteBase64Entry(idx) {
+    state.base64Data.splice(idx, 1);
+    renderBase64List();
+  }
+
+
+  if (typeof addBase64Btn !== "undefined" && addBase64Btn) {
+    addBase64Btn.addEventListener("click", () => {
+      state.base64Data.push({ name: "", value: "", _editing: true });
+      renderBase64List();
+    });
+  }
+
+
+  if (typeof window.base64List !== "undefined" && window.base64List) {
+    window.base64List.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target.dataset.edit) {
+        const idx = Number(target.dataset.edit);
+        editBase64Entry(idx);
+      } else if (target.dataset.delete) {
+        const idx = Number(target.dataset.delete);
+        if (confirm("Delete this entry?")) {
+          deleteBase64Entry(idx);
+        }
+      } else if (target.dataset.save) {
+        const idx = Number(target.dataset.save);
+        const entryDiv = window.base64List.children[idx];
+        const nameInput = entryDiv.querySelector(".base64-edit-name");
+        const dataInput = entryDiv.querySelector(".base64-edit-data");
+        saveBase64Entry(idx, nameInput.value, dataInput.value);
+      } else if (target.dataset.cancel) {
+        const idx = Number(target.dataset.cancel);
+        cancelEditBase64Entry(idx);
+      }
+    });
+  }
+
+  renderBase64List();
 
   function makeSeededRng(seed) {
     let t = seed >>> 0;
@@ -2376,6 +2675,12 @@ END`;
   }
 
   const builtins = {
+        GETBASE64: (name) => {
+          name = String(name);
+          const entry = state.base64Data.find(e => e.name === name);
+          if (!entry) throw new Error(`GETBASE64: No Base64 entry named '${name}'`);
+          return entry.value;
+        },
     PRINT: (...args) => {
       pushDisplayOp({
         type: "text",
@@ -3469,33 +3774,63 @@ END`;
 
   async function saveProgram() {
     const content = programInput.value;
-    if (window.showSaveFilePicker && window.isSecureContext) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: "program.basic",
-          types: [
-            {
-              description: "GameBASIC Program",
-              accept: { "text/plain": [".basic", ".bas", ".txt"] }
-            }
-          ]
-        });
-        const writable = await handle.createWritable();
-        await writable.write(content);
-        await writable.close();
-        return;
-      } catch (error) {
-        if (error && error.name === "AbortError") {
+    const base64Data = state.base64Data;
+    const hasBase64 = Array.isArray(base64Data) && base64Data.length > 0;
+    let blob, url, a, filename = "program.basic", type;
+    if (hasBase64) {
+      const combined = JSON.stringify({ code: content, base64: base64Data }, null, 2);
+      type = "application/json";
+      if (window.showSaveFilePicker && window.isSecureContext) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: "GameBASIC Program",
+                accept: { "application/json": [".basic", ".bas", ".txt"] }
+              }
+            ]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(combined);
+          await writable.close();
           return;
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            return;
+          }
         }
       }
+      blob = new Blob([combined], { type });
+    } else {
+      type = "text/plain";
+      if (window.showSaveFilePicker && window.isSecureContext) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [
+              {
+                description: "GameBASIC Program",
+                accept: { "text/plain": [".basic", ".bas", ".txt"] }
+              }
+            ]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(content);
+          await writable.close();
+          return;
+        } catch (error) {
+          if (error && error.name === "AbortError") {
+            return;
+          }
+        }
+      }
+      blob = new Blob([content], { type });
     }
-
-    const blob = new Blob([content], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    url = URL.createObjectURL(blob);
+    a = document.createElement("a");
     a.href = url;
-    a.download = "program.basic";
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3760,7 +4095,20 @@ END`;
     }
     const reader = new FileReader();
     reader.onload = () => {
-      programInput.value = String(reader.result ?? "");
+      let code = "";
+      let base64 = [];
+      try {
+        const parsed = JSON.parse(String(reader.result ?? ""));
+        code = parsed.code || "";
+        base64 = Array.isArray(parsed.base64) ? parsed.base64 : [];
+      } catch (e) {
+        // fallback: treat as plain text
+        code = String(reader.result ?? "");
+        base64 = [];
+      }
+      programInput.value = code;
+      state.base64Data = base64;
+      renderBase64List();
       syncHighlight();
       syncLineNumbers();
     };
@@ -3819,13 +4167,41 @@ END`;
       } catch (err) {
         engineSource = "";
       }
-      const compactEngineSource = engineSource
-        .replace(/const sample = `[\s\S]*?`\s*;\s*programInput\.value = sample;?/m, "");
-      const enginePayload = compactEngineSource ? encodeBase64(compactEngineSource) : "";
+      // Make engine source initialize its base64Data from a pending exported value if present
+      const engineWithPending = engineSource.replace(/base64Data\s*:\s*\[\s*\]/m, 'base64Data: (window.__exportedBase64Pending || [])');
+      // Use the pending-modified engine source; the engine will initialize its base64Data
+      const engineWithRestore = engineWithPending;
+      const enginePayload = engineWithRestore ? encodeBase64(engineWithRestore) : "";
       const engineTag = enginePayload
-        ? `<script>(function(){var b64="${enginePayload}";var binary=atob(b64);var code;if(window.TextDecoder){var bytes=Uint8Array.from(binary,function(ch){return ch.charCodeAt(0);});code=new TextDecoder().decode(bytes);}else{code=decodeURIComponent(escape(binary));}var s=document.createElement("script");s.text=code;document.head.appendChild(s);})();</script>`
-        : `<script src=\"engine.js\"></script>`;
+        ? (`<script>(function(){var b64="${enginePayload}";var binary=atob(b64);var code;if(window.TextDecoder){var bytes=Uint8Array.from(binary,function(ch){return ch.charCodeAt(0);});code=new TextDecoder().decode(bytes);}else{code=decodeURIComponent(escape(binary));}var s=document.createElement("script");s.text=code;document.head.appendChild(s);try{if(window.exportedBase64Data&&typeof window.__restoreExportedBase64==\"function\")window.__restoreExportedBase64(window.exportedBase64Data);}catch(e){}})();<\/script>`)
+        : `<script src="engine.js"></script>`;
       const exportScale = screenSize?.value === "1x" ? 1 : 2;
+      // Collect Base64 panel data from state (fallback to window.base64Data)
+      let base64Data = (window.state && Array.isArray(window.state.base64Data)) ? window.state.base64Data : (window.base64Data || []);
+      // If no entries found in state, try to read the DOM list (captures unsaved edits)
+      try {
+        if ((!Array.isArray(base64Data) || base64Data.length === 0) && window.base64List && window.base64List.children) {
+          const domEntries = [];
+          for (const child of Array.from(window.base64List.children)) {
+            // name may be in an input (.base64-edit-name) when editing, or in a <strong> when readonly
+            const nameInput = child.querySelector && child.querySelector('.base64-edit-name');
+            const nameEl = child.querySelector && child.querySelector('strong');
+            const dataEl = child.querySelector && child.querySelector('.base64-edit-data');
+            const name = nameInput ? (nameInput.value ?? '').trim() : (nameEl ? (nameEl.textContent ?? '').trim() : '');
+            let value = '';
+            if (dataEl) {
+              // prefer .value for textarea, fallback to textContent
+              value = (dataEl.value !== undefined) ? dataEl.value : (dataEl.textContent ?? '');
+            }
+            if (name) domEntries.push({ name, value });
+          }
+          if (domEntries.length > 0) base64Data = domEntries;
+        }
+      } catch (e) {
+        console.error('Error reading Base64 DOM entries for export:', e);
+      }
+      const base64DataJson = encodeBase64(JSON.stringify(base64Data));
+
       const runnerHtml = `<!doctype html>
 <html lang="en">
 <head>
@@ -3911,6 +4287,11 @@ END`;
     <button id="spriteCopyBtn" type="button">Copy</button>
   </div>
 
+  <script>
+    try { window.exportedBase64Data = JSON.parse(atob("${base64DataJson}")); } catch(e) { window.exportedBase64Data = []; }
+    try { window.__exportedBase64Pending = window.exportedBase64Data; } catch(e) { window.__exportedBase64Pending = []; }
+  </script>
+  <script>try{window.__restoreExportedBase64 = function(b){ try { window.__exportedBase64Pending = b; } catch(e){} };}catch(e){}</script>
   ${engineTag}
   <script>
     (function () {
@@ -3946,12 +4327,29 @@ END`;
       const input = document.getElementById("programInput");
       const run = document.getElementById("runBtn");
       input.value = code.replace(/\\r\\n/g, "\\n");
+      // Restore exported base64 resources into runtime state and rerender list if available
+      try {
+        if (window.exportedBase64Data) {
+          if (typeof window.__restoreExportedBase64 === "function") {
+            try { window.__restoreExportedBase64(window.exportedBase64Data); } catch (e) { console.error(e); }
+          } else if (window.state && Array.isArray(window.state.base64Data)) {
+            window.state.base64Data = window.exportedBase64Data;
+            if (typeof renderBase64List === "function") renderBase64List();
+          } else {
+            // fallback: store on window for engine script to pick up if it exposes state later
+            try { window.base64Data = window.exportedBase64Data; } catch (e) { }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to restore exported base64 data:", e);
+      }
       setTimeout(() => run.click(), 0);
     })();
   </script>
 </body>
 </html>`;
-  const compactHtml = runnerHtml.replace(/\r?\n/g, "");
+  // Write the runner HTML preserving newlines to avoid breaking embedded scripts
+  const compactHtml = runnerHtml;
 
       const saveAsFile = async () => {
         if (window.showSaveFilePicker && window.isSecureContext) {

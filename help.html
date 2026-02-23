@@ -32,9 +32,38 @@
     <li><strong>Colors:</strong> CSS strings like "#ffcc00", "rgb(255,0,0)", or "red"</li>
     <li><strong>Rendering:</strong> Most drawing queues until you call FLIP()</li>
     <li><strong>Default PIXELMODE:</strong> 1 (pixel-perfect)</li>
-  </ul>
+        <li><strong>Base64 Data Panel:</strong> Large Base64 strings (such as images or sound) can be managed in a dedicated panel. Add, edit, or delete entries. Reference them in your BASIC code by name (e.g., <code>LET IMG = "MY_IMAGE"</code>).</li>
+        <li><strong>Code/Data Separation:</strong> When saving, both code and Base64 data are stored together. On load, code and data are split: code goes to the editor, Base64 entries to the panel.</li>
+      </ul>
 
   <h2>Statements</h2>
+  <h2>Base64 Data Management</h2>
+  <div class="cmd">
+    <strong>Base64 Data Panel</strong>
+    <p>Use the Base64 Data panel to manage large Base64 strings separately from your program code. Each entry has a name and a Base64 string.</p>
+    <ul>
+      <li>Add, edit, or delete Base64 entries in the panel.</li>
+      <li>Reference entries in your BASIC code by name (e.g., <code>LET IMG = "MY_IMAGE"</code>).</li>
+      <li>When saving, both code and Base64 data are stored together in a JSON file.</li>
+      <li>When loading, code and Base64 data are split automatically.</li>
+    </ul>
+    <div class="example"><pre>// Example usage
+LET SPRITE = "MY_SPRITE"
+BANKLOADSPRITE(1, SPRITE, 16, 16)
+// 'MY_SPRITE' is a Base64 entry managed in the panel</pre></div>
+  </div>
+    <div class="cmd">
+      <strong>GETBASE64(name)</strong>
+      <p>Returns the Base64 string for the entry named <span class="param">name</span> from the Base64 Data panel.</p>
+      <ul>
+        <li>Use <code>LET V = GETBASE64("TheId")</code> to assign the Base64 string to a variable.</li>
+        <li>If the entry does not exist, an error is thrown.</li>
+      </ul>
+      <div class="example"><pre>// Example usage
+  LET SPRITE = GETBASE64("MY_SPRITE")
+  BANKLOADSPRITE(1, SPRITE, 16, 16)
+  // 'MY_SPRITE' is a Base64 entry managed in the panel</pre></div>
+    </div>
 
   <div class="cmd">
     <strong>REM comment</strong>
